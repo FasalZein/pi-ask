@@ -1,0 +1,11 @@
+overrides:
+  '@earendil-works/pi-agent-core': 0.87.1
+  '@earendil-works/pi-ai': 0.87.1
+  '@earendil-works/pi-tui': 0.87.1
+  '@earendil-works/pi-coding-agent': 0.87.1
+
+allowBuilds:
+  '@google/genai': false
+  esbuild: true
+  lefthook: false
+  protobufjs: false
