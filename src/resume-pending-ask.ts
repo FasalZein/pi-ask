@@ -27,13 +27,8 @@ export function registerPendingAskResume(
 ): void {
 	let reopening = false;
 
-	pi.on("session_start", (event, ctx) => {
-		if (
-			reopening ||
-			shutdownSignal?.aborted ||
-			ctx.mode !== "tui" ||
-			!REOPEN_REASONS.has(event.reason)
-		) {
+	const reopenIfPending = (ctx: ExtensionContext) => {
+		if (reopening || shutdownSignal?.aborted || ctx.mode !== "tui") {
 			return;
 		}
 
@@ -55,6 +50,15 @@ export function registerPendingAskResume(
 					reopening = false;
 				});
 		});
+	};
+
+	pi.on("session_start", (event, ctx) => {
+		if (REOPEN_REASONS.has(event.reason)) {
+			reopenIfPending(ctx);
+		}
+	});
+	pi.on("session_tree", (_event, ctx) => {
+		reopenIfPending(ctx);
 	});
 }
 
