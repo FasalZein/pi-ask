@@ -273,6 +273,10 @@ Dirty dismiss:
 - when `Confirm dismiss when dirty` is enabled, cancelling or dismissing a dirty ask flow requires the same action a second time
 - the dirty-dismiss warning stays visible until the user changes tabs in the ask flow
 
+## Compact-mode configuration advice
+
+In compact mode, pi-ask leaves the system prompt unchanged. When the expanded user prompt mentions `pi-ask`, `ask_user`, `ask-user`, `/ask-settings`, `ask settings`, `/answer`, `/ask:replay`, `keymap`, or `keybinding` (case-insensitive), pi-ask sends the configuration-doc sentence as a hidden model-facing message. It sends only one copy while that message remains in the model context, and sends it again after compaction removes it. A typed `/ask-settings` extension command runs before prompt matching and does not trigger this message. Full mode continues to append the sentence to the system prompt on every run.
+
 ## Non-TUI and non-interactive modes
 
 The rich ask flow uses `ctx.ui.custom()` and opens only in TUI mode. In print, JSON, RPC, or any other non-TUI mode, the tool returns a `Needs user input: ask_user requires interactive TUI mode.` message in `content` and a cancelled result with `cancelReason: "ui_unavailable"` in `details` instead of opening custom UI.
