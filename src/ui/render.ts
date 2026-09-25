@@ -17,6 +17,11 @@ const DOWN_SUFFIX = /Down$/;
 
 export interface AskViewport {
 	bodyRows: number;
+	followFocus?: boolean;
+	/** Mouse hit regions in component-local coordinates, refreshed by render. */
+	mouseList?: { start: number; end: number; maxTop: number };
+	mousePreview?: { x: number; start: number; end: number; maxTop: number };
+	mouseReview?: { start: number; end: number; maxTop: number };
 	/** Filled from rendered option/action row positions for page-key navigation. */
 	optionStarts: number[];
 	reviewPageRows: number;
@@ -61,6 +66,11 @@ export function renderAskScreen(args: {
 		}
 	};
 	renderFrameHeader({ lines: header, state, theme, width });
+	if (args.viewport) {
+		args.viewport.mouseList = undefined;
+		args.viewport.mouseReview = undefined;
+		args.viewport.mousePreview = undefined;
+	}
 	if (isSubmitTab(state)) {
 		renderSubmitScreen(
 			body,
@@ -88,6 +98,7 @@ export function renderAskScreen(args: {
 		if (args.viewport && starts.length > 0) {
 			// Keep the prompt and multi-selection count visible while options page.
 			const introRows = starts[0];
+			movePreviewRegion(args.viewport, -introRows);
 			header.push(...body.splice(0, introRows));
 			for (let index = 0; index < starts.length; index++) {
 				starts[index] -= introRows;
@@ -128,6 +139,7 @@ function renderQuestionBody(
 
 	let previewBoxRows = 0;
 	let previewEffectiveTop = 0;
+	let previewMaxTop = 0;
 	const renderQuestion = (previewMaxRows = 14) =>
 		renderQuestionScreen({
 			lines: body,
@@ -141,11 +153,20 @@ function renderQuestionBody(
 			previewScrollTop: args.previewScrollTop,
 			previewScrollHint: `${formatKeybindingLabel(config.keymaps.main.previewUp[0] ?? "[")} ${formatKeybindingLabel(config.keymaps.main.previewDown[0] ?? "]")}`,
 			previewMaxRows,
-			onPreviewBox: (rows) => {
+			onPreviewBox: (rows, x, start) => {
 				previewBoxRows = rows;
+				if (args.viewport) {
+					args.viewport.mousePreview = {
+						x,
+						start,
+						end: start + rows,
+						maxTop: previewMaxTop,
+					};
+				}
 			},
-			onPreviewScrollTop: (top) => {
+			onPreviewScrollTop: (top, maxTop) => {
 				previewEffectiveTop = top;
+				previewMaxTop = maxTop;
 			},
 		});
 	renderQuestion();
@@ -208,25 +229,30 @@ function windowAskBody(args: {
 		return [...header, ...body, ...footer];
 	}
 	viewport.optionStarts = starts;
+	moveReviewRegion(viewport, header.length);
 	const available = Math.max(1, viewport.rows - header.length - footer.length);
 	viewport.bodyRows = available;
 	if (body.length <= available) {
 		viewport.scrollTop = 0;
+		setListRegion(viewport, state, header.length, body.length, 0);
+		movePreviewRegion(viewport, header.length);
 		return [...header, ...body, ...footer];
 	}
 	// Reserve both indicator rows so the body and fixed footer never move as focus changes.
 	const pageSize = Math.max(1, available - 2);
 	const maxTop = Math.max(0, body.length - pageSize);
-	let top = Math.max(0, Math.min(viewport.scrollTop, maxTop));
-	if (focusEnd - focusStart > pageSize) {
-		top = focusStart;
-	} else if (focusStart < top) {
-		top = focusStart;
-	} else if (focusEnd > top + pageSize) {
-		top = Math.min(maxTop, focusEnd - pageSize);
-	}
+	const top = getQuestionWindowTop(
+		viewport,
+		state,
+		focusStart,
+		focusEnd,
+		pageSize,
+		maxTop
+	);
 	viewport.scrollTop = top;
 	viewport.bodyRows = pageSize;
+	setListRegion(viewport, state, header.length + 1, pageSize, maxTop);
+	movePreviewRegion(viewport, header.length + 1 - top);
 	const measuredStarts = isSubmitTab(state) ? reviewStarts : starts;
 	const above = measuredStarts.filter((start) => start < top).length;
 	const below = measuredStarts.filter(
@@ -244,6 +270,53 @@ function windowAskBody(args: {
 		theme.fg("dim", down),
 		...footer,
 	];
+}
+
+function setListRegion(
+	viewport: AskViewport,
+	state: AskState,
+	start: number,
+	rows: number,
+	maxTop: number
+) {
+	if (!isSubmitTab(state)) {
+		viewport.mouseList = { start, end: start + rows, maxTop };
+	}
+}
+
+function movePreviewRegion(viewport: AskViewport, offset: number) {
+	if (viewport.mousePreview) {
+		viewport.mousePreview.start += offset;
+		viewport.mousePreview.end += offset;
+	}
+}
+
+function moveReviewRegion(viewport: AskViewport, offset: number) {
+	if (viewport.mouseReview) {
+		viewport.mouseReview.start += offset;
+		viewport.mouseReview.end += offset;
+	}
+}
+
+function getQuestionWindowTop(
+	viewport: AskViewport,
+	state: AskState,
+	focusStart: number,
+	focusEnd: number,
+	pageSize: number,
+	maxTop: number
+): number {
+	let top = Math.max(0, Math.min(viewport.scrollTop, maxTop));
+	// Wheel scrolling suspends focus-follow until the next key press.
+	if (viewport.followFocus === false || isSubmitTab(state)) {
+		return top;
+	}
+	if (focusEnd - focusStart > pageSize || focusStart < top) {
+		top = focusStart;
+	} else if (focusEnd > top + pageSize) {
+		top = Math.min(maxTop, focusEnd - pageSize);
+	}
+	return top;
 }
 
 function pageKeyLabel(key: string): string {

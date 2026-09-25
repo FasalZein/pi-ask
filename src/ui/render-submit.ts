@@ -9,6 +9,8 @@ import {
 } from "./view-models/review.ts";
 
 interface ReviewWindow {
+	followFocus?: boolean;
+	mouseReview?: { start: number; end: number; maxTop: number };
 	reviewPageRows: number;
 	reviewScrollTop: number;
 }
@@ -69,6 +71,7 @@ export function renderSubmitScreen(
 		room++;
 	}
 	const separator = room > 3;
+	const reviewStart = lines.length;
 	const windowed = windowReviewRows(
 		review,
 		theme,
@@ -77,6 +80,13 @@ export function renderSubmitScreen(
 		pageKeys,
 		focusedRow
 	);
+	if (reviewWindow) {
+		reviewWindow.mouseReview = {
+			start: reviewStart,
+			end: reviewStart + windowed.lines.length,
+			maxTop: Math.max(0, review.lines.length - windowed.pageSize),
+		};
+	}
 	reportVisibleRows(review, windowed, lines.length, onReviewRow);
 	lines.push(...windowed.lines);
 	if (separator) {
@@ -281,7 +291,7 @@ function windowReviewRows(
 		review,
 		window.reviewScrollTop,
 		pageSize,
-		focusedRow
+		window.followFocus === false ? undefined : focusedRow
 	);
 	window.reviewScrollTop = top;
 	const above = review.starts.filter((start) => start < top).length;

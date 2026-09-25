@@ -141,7 +141,9 @@ function renderPreviewQuestion(
 			context.previewScrollTop,
 			context.previewScrollHint,
 			context.previewMaxRows,
-			context.onPreviewBox,
+			context.onPreviewBox &&
+				((rows, x, start) =>
+					context.onPreviewBox?.(rows, x, introRows + start)),
 			context.onPreviewScrollTop
 		);
 	} else {
@@ -155,7 +157,9 @@ function renderPreviewQuestion(
 			context.previewScrollTop,
 			context.previewScrollHint,
 			context.previewMaxRows,
-			context.onPreviewBox,
+			context.onPreviewBox &&
+				((rows, x, start) =>
+					context.onPreviewBox?.(rows, x, introRows + start)),
 			context.onPreviewScrollTop
 		);
 	}
@@ -173,8 +177,8 @@ function renderWidePreviewLayout(
 	previewScrollTop = 0,
 	previewScrollHint?: string,
 	previewMaxRows?: number,
-	onPreviewBox?: (rows: number) => void,
-	onPreviewScrollTop?: (top: number) => void
+	onPreviewBox?: QuestionRenderContext["onPreviewBox"],
+	onPreviewScrollTop?: QuestionRenderContext["onPreviewScrollTop"]
 ) {
 	const leftWidth = measurePreviewLeftWidth(rows, width);
 	const rightWidth = Math.max(
@@ -191,7 +195,7 @@ function renderWidePreviewLayout(
 		previewMaxRows,
 		onPreviewScrollTop
 	);
-	onPreviewBox?.(rightPane.length);
+	onPreviewBox?.(rightPane.length, leftWidth + 2, 0);
 	for (const line of mergeColumns(leftPane, rightPane, leftWidth, width)) {
 		add(line);
 	}
@@ -207,11 +211,13 @@ function renderStackedPreviewLayout(
 	previewScrollTop = 0,
 	previewScrollHint?: string,
 	previewMaxRows?: number,
-	onPreviewBox?: (rows: number) => void,
-	onPreviewScrollTop?: (top: number) => void
+	onPreviewBox?: QuestionRenderContext["onPreviewBox"],
+	onPreviewScrollTop?: QuestionRenderContext["onPreviewScrollTop"]
 ) {
-	renderPreviewOptionList(rows, theme, width, onOptionRow).forEach(add);
+	const leftPane = renderPreviewOptionList(rows, theme, width, onOptionRow);
+	leftPane.forEach(add);
 	add("");
+	const linesBeforeBox = leftPane.length + 1;
 	const previewBox = renderPreviewPaneContent(
 		selectedOption,
 		theme,
@@ -221,7 +227,7 @@ function renderStackedPreviewLayout(
 		previewMaxRows,
 		onPreviewScrollTop
 	);
-	onPreviewBox?.(previewBox.length);
+	onPreviewBox?.(previewBox.length, 0, linesBeforeBox);
 	previewBox.forEach(add);
 }
 

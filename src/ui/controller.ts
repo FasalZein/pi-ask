@@ -72,6 +72,13 @@ type Tui = CustomCallbackArgs[0];
 type Theme = CustomCallbackArgs[1];
 type Keybindings = CustomCallbackArgs[2];
 type Done = (result: AskResult) => void;
+// pi-tui 0.84.x has no component mouse types. Newer fullscreen hosts call this method.
+interface AskMouseEvent {
+	type: string;
+	wheelDelta?: number;
+	x: number;
+	y: number;
+}
 interface AskFlowOptions {
 	allowFreeform?: boolean;
 	exec: ExtensionAPI["exec"];
@@ -247,6 +254,9 @@ function createAskFlowController(
 		handleInput(data: string) {
 			handleControllerInput(controller, data);
 		},
+		handleMouse(event: AskMouseEvent) {
+			return handleWheel(controller, event);
+		},
 		dispose() {
 			controller.removeAbortListeners();
 			controller.remoteFlow?.dispose();
@@ -288,7 +298,81 @@ function renderController(
 	});
 }
 
+function handleWheel(
+	controller: AskFlowController,
+	event: AskMouseEvent
+): { handled: true } | undefined {
+	if (controller.finished || event.type !== "wheel" || !event.wheelDelta) {
+		return;
+	}
+	const target = getWheelTarget(controller, event);
+	if (!target) {
+		return;
+	}
+	const next = Math.max(
+		0,
+		Math.min(target.maxTop, target.top + event.wheelDelta)
+	);
+	if (next === target.top) {
+		return;
+	}
+	target.set(next);
+	controller.viewport.followFocus = false;
+	refresh(controller);
+	return { handled: true };
+}
+
+function getWheelTarget(
+	controller: AskFlowController,
+	event: AskMouseEvent
+):
+	| {
+			top: number;
+			maxTop: number;
+			set: (top: number) => void;
+	  }
+	| undefined {
+	const { mouseList, mousePreview, mouseReview } = controller.viewport;
+	const within = (region: { start: number; end: number }) =>
+		event.y >= region.start && event.y < region.end;
+	if (
+		mousePreview &&
+		mouseList &&
+		within(mouseList) &&
+		within(mousePreview) &&
+		event.x >= mousePreview.x
+	) {
+		return {
+			top: controller.previewScrollTop,
+			maxTop: mousePreview.maxTop,
+			set: (top) => {
+				controller.previewScrollTop = top;
+			},
+		};
+	}
+	if (mouseReview && within(mouseReview)) {
+		return {
+			top: controller.viewport.reviewScrollTop,
+			maxTop: mouseReview.maxTop,
+			set: (top) => {
+				controller.viewport.reviewScrollTop = top;
+			},
+		};
+	}
+	if (mouseList && within(mouseList)) {
+		return {
+			top: controller.viewport.scrollTop,
+			maxTop: mouseList.maxTop,
+			set: (top) => {
+				controller.viewport.scrollTop = top;
+			},
+		};
+	}
+	return;
+}
+
 function handleControllerInput(controller: AskFlowController, data: string) {
+	controller.viewport.followFocus = true;
 	controller.editor.disableSubmit = !isNativeEditorSubmitEnabled(controller);
 	let command = getInputCommand(
 		controller.state,

@@ -13,8 +13,8 @@ export interface QuestionRenderContext {
 	editor: Editor;
 	lines: string[];
 	onOptionRow?: (index: number, start: number, end: number) => void;
-	onPreviewBox?: (rows: number) => void;
-	onPreviewScrollTop?: (top: number) => void;
+	onPreviewBox?: (rows: number, x: number, start: number) => void;
+	onPreviewScrollTop?: (top: number, maxTop: number) => void;
 	options: ReturnType<typeof getRenderableOptions>;
 	previewMaxRows?: number;
 	previewScrollHint?: string;

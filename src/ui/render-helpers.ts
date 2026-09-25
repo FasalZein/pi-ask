@@ -294,10 +294,10 @@ export function renderPreviewPaneContent(
 	scrollTop = 0,
 	scrollHint = "[ ]",
 	maxRows = 14,
-	onScrollTop?: (top: number) => void
+	onScrollTop?: (top: number, maxTop: number) => void
 ): string[] {
 	if (!selectedOption) {
-		onScrollTop?.(0);
+		onScrollTop?.(0, 0);
 		return renderBox([{ text: NO_PREVIEW_TEXT, color: "dim" }], width, theme);
 	}
 
@@ -331,7 +331,7 @@ export function renderPreviewPaneContent(
 		0,
 		Math.min(scrollTop, previewLines.length - pageSize)
 	);
-	onScrollTop?.(offset);
+	onScrollTop?.(offset, Math.max(0, previewLines.length - pageSize));
 	for (const previewLine of clipped
 		? previewLines.slice(offset, offset + pageSize)
 		: previewLines) {
