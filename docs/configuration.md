@@ -60,6 +60,10 @@ Unsupported future versions or invalid files are left unchanged and defaults are
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],
       "previousOption": ["up"],
+      "pageUp": ["shift+up", "pageUp"],
+      "pageDown": ["shift+down", "pageDown"],
+      "previewUp": ["["],
+      "previewDown": ["]"],
       "optionNote": ["n"],
       "questionNote": ["shift+n"]
     },
@@ -229,6 +233,10 @@ Arrays are aliases: any listed key triggers the same action.
     "previousTab": ["shift+tab", "left"],
     "nextOption": ["down"],
     "previousOption": ["up"],
+    "pageUp": ["shift+up", "pageUp"],
+    "pageDown": ["shift+down", "pageDown"],
+    "previewUp": ["["],
+    "previewDown": ["]"],
     "optionNote": ["n"],
     "questionNote": ["shift+n"]
   },
@@ -264,6 +272,8 @@ Arrays are aliases: any listed key triggers the same action.
 - `editor`: custom answer editor
 - `noteEditor`: question/option note editor
 - `settingsModal`: `/ask-settings` and `?` settings overlay
+
+The main-flow `pageUp` / `pageDown` actions move question focus by a visible page or scroll review answers with the selected action pinned. Their default aliases are Shift+Up / PageUp and Shift+Down / PageDown. `previewUp` / `previewDown` scroll a long preview independently, with `[` and `]` as defaults. These actions may be remapped when a terminal takes the defaults. Existing version 5 configs without these four actions receive their defaults in memory; pi-ask does not rewrite the config file. Pi select up/down/confirm aliases also work in the ask flow. Pi select cancel is not used.
 
 ### Allowed bindings
 
@@ -359,6 +369,10 @@ Invalid keymaps include:
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],
       "previousOption": ["up"],
+      "pageUp": ["shift+up", "pageUp"],
+      "pageDown": ["shift+down", "pageDown"],
+      "previewUp": ["["],
+      "previewDown": ["]"],
       "optionNote": ["x"],
       "questionNote": ["shift+x"]
     },

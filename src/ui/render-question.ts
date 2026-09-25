@@ -32,7 +32,9 @@ export function renderQuestionScreen(context: QuestionRenderContext) {
 	}
 
 	for (const row of model.rows) {
+		const start = lines.length;
 		renderStandardOption(lines, row, context);
+		context.onOptionRow?.(row.index, start, lines.length);
 	}
 }
 
@@ -111,14 +113,25 @@ function renderPreviewQuestion(
 	const add = (text = "") => lines.push(truncateToWidth(text, width));
 
 	if (model.previewLayout === "custom") {
-		renderPreviewOptionList(model.rows, theme, width).forEach(add);
+		renderPreviewOptionList(
+			model.rows,
+			theme,
+			width,
+			context.onOptionRow
+		).forEach(add);
 	} else if (model.previewLayout === "wide") {
 		renderWidePreviewLayout(
 			add,
 			model.rows,
 			theme,
 			width,
-			model.selectedOption
+			model.selectedOption,
+			context.onOptionRow,
+			context.previewScrollTop,
+			context.previewScrollHint,
+			context.previewMaxRows,
+			context.onPreviewBox,
+			context.onPreviewScrollTop
 		);
 	} else {
 		renderStackedPreviewLayout(
@@ -126,7 +139,13 @@ function renderPreviewQuestion(
 			model.rows,
 			theme,
 			width,
-			model.selectedOption
+			model.selectedOption,
+			context.onOptionRow,
+			context.previewScrollTop,
+			context.previewScrollHint,
+			context.previewMaxRows,
+			context.onPreviewBox,
+			context.onPreviewScrollTop
 		);
 	}
 
@@ -138,15 +157,30 @@ function renderWidePreviewLayout(
 	rows: OptionRowModel[],
 	theme: Theme,
 	width: number,
-	selectedOption: ReturnType<typeof buildQuestionScreenModel>["selectedOption"]
+	selectedOption: ReturnType<typeof buildQuestionScreenModel>["selectedOption"],
+	onOptionRow?: QuestionRenderContext["onOptionRow"],
+	previewScrollTop = 0,
+	previewScrollHint?: string,
+	previewMaxRows?: number,
+	onPreviewBox?: (rows: number) => void,
+	onPreviewScrollTop?: (top: number) => void
 ) {
 	const leftWidth = measurePreviewLeftWidth(rows, width);
 	const rightWidth = Math.max(
 		UI_DIMENSIONS.previewMinRightWidth,
 		width - leftWidth - 2
 	);
-	const leftPane = renderPreviewOptionList(rows, theme, leftWidth);
-	const rightPane = renderPreviewPaneContent(selectedOption, theme, rightWidth);
+	const leftPane = renderPreviewOptionList(rows, theme, leftWidth, onOptionRow);
+	const rightPane = renderPreviewPaneContent(
+		selectedOption,
+		theme,
+		rightWidth,
+		previewScrollTop,
+		previewScrollHint,
+		previewMaxRows,
+		onPreviewScrollTop
+	);
+	onPreviewBox?.(rightPane.length);
 	for (const line of mergeColumns(leftPane, rightPane, leftWidth, width)) {
 		add(line);
 	}
@@ -157,20 +191,38 @@ function renderStackedPreviewLayout(
 	rows: OptionRowModel[],
 	theme: Theme,
 	width: number,
-	selectedOption: ReturnType<typeof buildQuestionScreenModel>["selectedOption"]
+	selectedOption: ReturnType<typeof buildQuestionScreenModel>["selectedOption"],
+	onOptionRow?: QuestionRenderContext["onOptionRow"],
+	previewScrollTop = 0,
+	previewScrollHint?: string,
+	previewMaxRows?: number,
+	onPreviewBox?: (rows: number) => void,
+	onPreviewScrollTop?: (top: number) => void
 ) {
-	renderPreviewOptionList(rows, theme, width).forEach(add);
+	renderPreviewOptionList(rows, theme, width, onOptionRow).forEach(add);
 	add("");
-	renderPreviewPaneContent(selectedOption, theme, width).forEach(add);
+	const previewBox = renderPreviewPaneContent(
+		selectedOption,
+		theme,
+		width,
+		previewScrollTop,
+		previewScrollHint,
+		previewMaxRows,
+		onPreviewScrollTop
+	);
+	onPreviewBox?.(previewBox.length);
+	previewBox.forEach(add);
 }
 
 function renderPreviewOptionList(
 	rows: OptionRowModel[],
 	theme: Theme,
-	width: number
+	width: number,
+	onOptionRow?: QuestionRenderContext["onOptionRow"]
 ): string[] {
 	const lines: string[] = [];
 	for (const row of rows) {
+		const start = lines.length;
 		pushWrappedText(
 			lines,
 			`${row.index + 1}. ${row.label}`,
@@ -181,6 +233,7 @@ function renderPreviewOptionList(
 			"  "
 		);
 		renderOptionSubtitle(lines, row.description, row.recommended, width, theme);
+		onOptionRow?.(row.index, start, lines.length);
 	}
 	return lines;
 }
