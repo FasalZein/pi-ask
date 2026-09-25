@@ -354,6 +354,46 @@ test("tree navigation reopens a pending ask only on the new branch and only once
 	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
 });
 
+test("recovered ask sets and clears the waiting footer and title on cancel", {
+	timeout: 2000,
+}, async () => {
+	getAskConfigStore().setConfig(disabledNotificationConfig());
+	const bus = new TestEventBus();
+	const remoteAsk = createRemoteAskRuntime(bus as never);
+	const status: [string, string | undefined][] = [];
+	const titles: string[] = [];
+	let dismissed!: () => void;
+	const dismissal = new Promise<void>((resolve) => {
+		dismissed = resolve;
+	});
+	const harness = createResumeHarness(
+		[askToolCall("waiting-call"), storedPayload("waiting-call")],
+		remoteAsk,
+		{
+			onStatus: (key, text) => status.push([key, text]),
+			onTitle: (title) => titles.push(title),
+			onDismissNotice: dismissed,
+		}
+	);
+	bus.on(PI_ASK_STARTED_EVENT, (data) => {
+		bus.emit(PI_ASK_SUBMIT_EVENT, {
+			version: 1,
+			requestId: "waiting-cancel",
+			flowId: (data as RemoteAskStartedEvent).flowId,
+			response: { kind: "cancel" },
+		});
+	});
+	harness.start("resume");
+	await dismissal;
+	assert.deepEqual(status, [
+		["pi-ask", "question 1 of 1"],
+		["pi-ask", undefined],
+	]);
+	assert.deepEqual(titles, ["pi ask: question 1 of 1", ""]);
+	remoteAsk.disposeAll();
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+});
+
 test("resumed submit persists dismissal, delivers an answer, and emits remote lifecycle events", {
 	timeout: 2000,
 }, async () => {
@@ -578,6 +618,8 @@ function createResumeHarness(
 	options: {
 		idle?: boolean;
 		onDismissNotice?: () => void;
+		onStatus?: (key: string, text: string | undefined) => void;
+		onTitle?: (title: string) => void;
 		onSend?: (text: string, sendOptions: unknown) => void;
 		commands?: ReturnType<
 			import("@earendil-works/pi-coding-agent").ExtensionAPI["getCommands"]
@@ -621,6 +663,12 @@ function createResumeHarness(
 		mode: "tui",
 		sessionManager: { getBranch: () => branch },
 		ui: {
+			setStatus(key: string, text: string | undefined) {
+				options.onStatus?.(key, text);
+			},
+			setTitle(title: string) {
+				options.onTitle?.(title);
+			},
 			custom(callback: (...args: any[]) => unknown) {
 				return new Promise((resolve) => {
 					callback(

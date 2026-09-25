@@ -282,6 +282,8 @@ Dirty dismiss:
 
 ## Execution and lifecycle
 
+While an interactive ask flow is open, pi-ask sets the `pi-ask` footer status and terminal title to the current question number, or to review. Both update when the active tab changes and clear when the flow submits, cancels, aborts, or errors. This also applies to recovered TUI asks and RPC dialogs. Non-interactive calls do not show a waiting indicator.
+
 `ask_user` requests sequential execution. When one assistant message calls it alongside other tools, pi runs the entire batch one call at a time. A pre-aborted call does not open the UI; aborting an open flow closes it and emits the remote `completed` event. On session shutdown, open flows close. An interrupted recovered ask has no dismissal marker or tool result, so startup can reopen it again.
 
 ## Compact-mode configuration advice

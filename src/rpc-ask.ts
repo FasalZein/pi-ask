@@ -9,6 +9,7 @@ import {
 import { createInitialState } from "./state/create.ts";
 import { toAskResult } from "./state/result.ts";
 import type { AskParams, AskQuestion, AskResult, AskState } from "./types.ts";
+import { withWaitingIndicator } from "./waiting-indicator.ts";
 
 interface RpcAskOptions {
 	presentSingleAsMulti: boolean;
@@ -18,10 +19,21 @@ interface RpcAskOptions {
 	toolCallId: string;
 }
 
-export async function runRpcAskFlow(
+export function runRpcAskFlow(
 	ctx: ExtensionContext,
 	params: AskParams,
 	options: RpcAskOptions
+): Promise<AskResult> {
+	return withWaitingIndicator(ctx, params.questions.length, (showTab) =>
+		collectRpcAsk(ctx, params, options, showTab)
+	);
+}
+
+async function collectRpcAsk(
+	ctx: ExtensionContext,
+	params: AskParams,
+	options: RpcAskOptions,
+	showTab: (index: number) => void
 ): Promise<AskResult> {
 	let state = createInitialState(params, options);
 	const dialogController = new AbortController();
@@ -76,6 +88,7 @@ export async function runRpcAskFlow(
 		const answers = await collectAnswers(
 			ctx,
 			state.questions,
+			showTab,
 			dialogController.signal,
 			ended
 		);
@@ -86,6 +99,7 @@ export async function runRpcAskFlow(
 			cancel();
 			return await ended;
 		}
+		showTab(state.questions.length);
 		const review = await waitForDialog(
 			ctx.ui.select("Review answers", ["Submit", "Cancel"], {
 				signal: dialogController.signal,
@@ -110,11 +124,15 @@ export async function runRpcAskFlow(
 async function collectAnswers(
 	ctx: ExtensionContext,
 	questions: AskQuestion[],
+	showTab: (index: number) => void,
 	signal: AbortSignal,
 	ended: Promise<AskResult>
 ): Promise<Record<string, RemoteAskAnswer> | undefined> {
 	const answers: Record<string, RemoteAskAnswer> = {};
-	for (const question of questions) {
+	for (const [index, question] of questions.entries()) {
+		if (index > 0) {
+			showTab(index);
+		}
 		const answer = await askQuestion(ctx, question, signal, ended);
 		if (!answer) {
 			return;
