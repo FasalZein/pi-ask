@@ -49,6 +49,7 @@ export function toAskResult(state: AskState): AskResult {
 	return {
 		title: state.title,
 		cancelled: state.cancelled,
+		...(state.cancelled ? { cancelReason: "user" as const } : {}),
 		mode: state.mode,
 		questions: state.questions.map((question) => ({
 			id: question.id,

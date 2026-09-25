@@ -52,6 +52,7 @@ This document defines the stable external behavior. It does not explain internal
   details: {
     title?: string;
     cancelled: boolean;
+    cancelReason?: "user" | "ui_unavailable" | "invalid_input";
     error?: {
       kind: "invalid_input";
       issues: Array<{
@@ -167,7 +168,7 @@ This document defines the stable external behavior. It does not explain internal
 
 ## Output rules
 
-- `cancelled: true` means the user dismissed the flow, UI was unavailable, or the payload was invalid before UI opened
+- `cancelled: true` means the user dismissed the flow, UI was unavailable, or the payload was invalid before UI opened; every cancelled result includes `cancelReason`: `user` for cancel or dismiss (including command flows), `ui_unavailable` for non-interactive modes, or `invalid_input` for payload validation failures
 - semantically invalid payloads that reach tool execution return `error.kind === "invalid_input"` with structured `issues` and a transcript-friendly `Invalid ask_user payload:` message; their rendered status is `Invalid tool payload`
 - payloads missing schema-required fields fail Pi's schema validation before tool execution and use Pi's standard tool-error result without structured `details`
 - `mode: "submit"` is normal completion; `mode: "elaborate"` means the user asked the agent to continue with follow-up clarification based on notes
@@ -268,7 +269,7 @@ Dirty dismiss:
 
 ## Non-TUI and non-interactive modes
 
-The rich ask flow uses `ctx.ui.custom()` and opens only in TUI mode. In print, JSON, RPC, or any other non-TUI mode, the tool returns a `Needs user input: ask_user requires interactive TUI mode.` message in `content` and a cancelled result in `details` instead of opening custom UI.
+The rich ask flow uses `ctx.ui.custom()` and opens only in TUI mode. In print, JSON, RPC, or any other non-TUI mode, the tool returns a `Needs user input: ask_user requires interactive TUI mode.` message in `content` and a cancelled result with `cancelReason: "ui_unavailable"` in `details` instead of opening custom UI.
 
 The public tool schema requires question `id` and `prompt` plus option `value` and `label`, and it restricts question `type` to `single`, `multi`, or `preview`, so malformed structural fields fail before execution. The tool still validates trimmed text, uniqueness, option counts, and preview requirements during execution and returns structured issues for those failures. Result rendering falls back to Pi's raw tool-error text when schema validation prevents execution.
 

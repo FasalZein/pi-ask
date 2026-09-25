@@ -123,6 +123,7 @@ export async function runAskFlow(
 		return {
 			...toAskResult(createInitialState(params, flowOptions)),
 			cancelled: true,
+			cancelReason: "ui_unavailable",
 		};
 	}
 	return ctx.ui.custom<AskResult>((...args) =>

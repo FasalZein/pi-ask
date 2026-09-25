@@ -389,6 +389,7 @@ test("resumed cancel persists dismissal and does not reopen on a second resume",
 	);
 	assert.equal(completed.source, "ask:resume");
 	assert.equal(completed.result.cancelled, true);
+	assert.equal(completed.result.cancelReason, "user");
 
 	remoteAsk.disposeAll();
 	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);

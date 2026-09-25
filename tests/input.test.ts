@@ -409,6 +409,7 @@ test("ask flow forwards focus and invalidation to its editor", async () => {
 		component.handleInput("\x1b");
 		const result = await resultPromise;
 		assert.equal(result.cancelled, true);
+		assert.equal(result.cancelReason, "user");
 	} finally {
 		Editor.prototype.invalidate = originalInvalidate;
 		getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
