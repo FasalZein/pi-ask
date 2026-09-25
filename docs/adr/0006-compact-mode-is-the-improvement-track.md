@@ -9,3 +9,5 @@ The fork diverges from upstream on purpose. We do not plan upstream contribution
 Compact becomes the default after two checks. First, the base-model gate (ADR 0003) passes on the current compact text. Second, a report run on `anthropic/claude-opus-5-5` and `openai-codex/gpt-6-sol` shows no behavior regression against full mode. A later ADR records that switch and replaces 0005's default.
 
 `PI_ASK_PROMPT_MODE` is inherited by child pi processes. So setting compact mode in the parent shell also applies it to subagents.
+
+Exception: removing the bundled `ask-user` skill changes the model-visible skill catalog in both modes. This is deliberate. The skill is package content, not full-mode tool text; the full-mode golden text remains frozen.
