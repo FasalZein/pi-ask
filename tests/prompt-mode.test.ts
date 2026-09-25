@@ -62,9 +62,9 @@ const compactDescription =
 const compactGuideline =
 	"Use `ask_user` before preference-sensitive decisions (scope, tone, UX, naming, architecture, docs, implementation direction), or when several valid directions exist; ask 1-3 concise questions instead of choosing one path yourself.";
 const followUpGuideline =
-	"If a choice is still needed, use another structured `ask_user` call, not plain-text choices in chat.";
+	"If a choice is still needed after an answer or note, use another structured `ask_user` call, not plain-text choices in chat. When prior answers narrow the branch, bundle the next 2-3 related unresolved decisions into one follow-up when possible; ask one at a time only when the next question materially depends on the previous answer.";
 const questionsDescription =
-	"Questions to ask in the interactive clarification flow. When prior answers narrow the branch, bundle the next 2-3 related decisions into one call; ask one at a time only when the next question depends on the previous answer.";
+	"Questions to ask in the interactive clarification flow";
 const labelDescription =
 	"Required short visible option label shown in the list; a unique machine identifier is derived from this label.";
 const derivedValuePattern = /Offline only \[offline-only\]/;
@@ -227,7 +227,8 @@ test("compact rule inventory has a single observed home for each rule", () => {
 	}
 	collect(tool.parameters, "parameters");
 	const homes: Record<string, string> = {
-		guideline: tool.promptGuidelines.join(" "),
+		"guideline.1": tool.promptGuidelines[0],
+		"guideline.2": tool.promptGuidelines[1],
 		config: PI_ASK_CONFIG_PROMPT,
 		"result.elaborated": compact.elaborated,
 		...descriptions,
@@ -235,8 +236,8 @@ test("compact rule inventory has a single observed home for each rule", () => {
 	// Inventory from the compact-mode rule allocation in spec #1.
 	// The config home is its trigger text.
 	const rules: [string, string, string][] = [
-		["G1", "guideline", "before preference-sensitive decisions"],
-		["G2", "guideline", "1-3 concise questions"],
+		["G1", "guideline.1", "before preference-sensitive decisions"],
+		["G2", "guideline.1", "1-3 concise questions"],
 		["G3", "parameters.questions[].prompt", "one decision at a time"],
 		["G4", "parameters.questions[].id", "stable question identifier"],
 		[
@@ -253,14 +254,18 @@ test("compact rule inventory has a single observed home for each rule", () => {
 		["G8", "parameters.questions[].type", "Use `preview` only"],
 		[
 			"G9",
-			"guideline",
-			"another structured `ask_user` call, not plain-text choices",
+			"guideline.2",
+			"after an answer or note, use another structured `ask_user` call, not plain-text choices",
 		],
-		["G10", "parameters.questions", "bundle the next 2-3 related decisions"],
+		[
+			"G10",
+			"guideline.2",
+			"bundle the next 2-3 related unresolved decisions into one follow-up when possible",
+		],
 		[
 			"G11",
-			"parameters.questions",
-			"ask one at a time only when the next question depends",
+			"guideline.2",
+			"ask one at a time only when the next question materially depends",
 		],
 		["D1", "parameters.questions[].prompt", "Required direct question"],
 		[

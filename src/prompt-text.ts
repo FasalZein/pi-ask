@@ -45,7 +45,7 @@ export const COMPACT_TOOL_DESCRIPTION =
 	"Interactive clarification tool for cases where the next step depends on user preferences, missing requirements, or choosing between multiple valid directions. Ask a short structured interview, collect normalized answers, and continue using those answers explicitly instead of guessing.";
 export const COMPACT_TOOL_PROMPT_GUIDELINES = [
 	"Use `ask_user` before preference-sensitive decisions (scope, tone, UX, naming, architecture, docs, implementation direction), or when several valid directions exist; ask 1-3 concise questions instead of choosing one path yourself.",
-	"If a choice is still needed, use another structured `ask_user` call, not plain-text choices in chat.",
+	"If a choice is still needed after an answer or note, use another structured `ask_user` call, not plain-text choices in chat. When prior answers narrow the branch, bundle the next 2-3 related unresolved decisions into one follow-up when possible; ask one at a time only when the next question materially depends on the previous answer.",
 ] as const;
 export const COMPACT_ELABORATION_INSTRUCTION =
 	"First answer the user's note directly using the question and option context; re-ask only the affected question if a choice is still needed.";
@@ -83,8 +83,7 @@ export const CompactAskParamsSchema = {
 		...AskParamsSchema.properties,
 		questions: {
 			...AskParamsSchema.properties.questions,
-			description:
-				"Questions to ask in the interactive clarification flow. When prior answers narrow the branch, bundle the next 2-3 related decisions into one call; ask one at a time only when the next question depends on the previous answer.",
+			description: "Questions to ask in the interactive clarification flow",
 			maxItems: 4,
 			items: compactQuestionSchema,
 		},
