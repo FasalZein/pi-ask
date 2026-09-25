@@ -28,7 +28,10 @@ const prepared = tools[0].prepareArguments(raw);
 const response = await tools[0].execute("missing-value", prepared, undefined, undefined, { mode: "print" });
 const blank = tools[0].prepareArguments({ questions: [{ id: "q", prompt: "Pick", options: [{ value: "", label: "Blank value" }] }] });
 const blankResponse = await tools[0].execute("blank-value", blank, undefined, undefined, { mode: "print" });
-console.log(JSON.stringify({ tools: tools.map(({ description, promptSnippet, promptGuidelines, parameters }) => ({ description, promptSnippet, promptGuidelines, parameters })), result: successfulResponse(submitted).content[0].text, elaborated: successfulResponse(elaborated).content[0].text, prepared, response: { text: response.content[0].text, details: response.details }, blankResponse: blankResponse.content[0].text }));
+const invalid = tools[0].prepareArguments({ questions: [{ id: "q", prompt: "Pick", options: [{ value: 42, label: "Number" }] }] });
+const invalidResponse = tools[0].parameters.properties.questions.items.properties.options.items.properties.value === undefined
+  ? await tools[0].execute("invalid-value", invalid, undefined, undefined, { mode: "print" }) : undefined;
+console.log(JSON.stringify({ tools: tools.map(({ description, promptSnippet, promptGuidelines, parameters }) => ({ description, promptSnippet, promptGuidelines, parameters })), result: successfulResponse(submitted).content[0].text, elaborated: successfulResponse(elaborated).content[0].text, prepared, response: { text: response.content[0].text, details: response.details }, blankResponse: blankResponse.content[0].text, invalidResponse: invalidResponse?.content[0].text }));
 `;
 
 function registeredText(mode: string | undefined) {
@@ -62,8 +65,8 @@ const followUpGuideline =
 	"If a choice is still needed, use another structured `ask_user` call, not plain-text choices in chat.";
 const questionsDescription =
 	"Questions to ask in the interactive clarification flow. When prior answers narrow the branch, bundle the next 2-3 related decisions into one call; ask one at a time only when the next question depends on the previous answer.";
-const valueDescription =
-	"Optional machine-readable value returned for this option in the result; when omitted, a unique value is derived from the label.";
+const labelDescription =
+	"Required short visible option label shown in the list; a unique machine identifier is derived from this label.";
 const derivedValuePattern = /Offline only \[offline-only\]/;
 const blankValuePattern = /option 1: value is required/;
 const missingValuePattern =
@@ -93,8 +96,10 @@ test("prompt mode selects fixed compact text at load and preserves all other sch
 	const option =
 		tool.parameters.properties.questions.items.properties.options.items;
 	assert.equal(option.properties.recommended.description, recommendation);
-	assert.equal(option.properties.value.description, valueDescription);
+	assert.equal(option.properties.label.description, labelDescription);
+	assert.equal(Object.hasOwn(option.properties, "value"), false);
 	assert.deepEqual(option.required, ["label"]);
+	assert.equal(JSON.stringify(tool).includes('"value"'), false);
 	const unchanged = structuredClone(tool.parameters);
 	unchanged.properties.questions.description =
 		full.tools[0].parameters.properties.questions.description;
@@ -103,6 +108,8 @@ test("prompt mode selects fixed compact text at load and preserves all other sch
 		full.tools[0].parameters.properties.questions.items.properties.options.items.required;
 	unchanged.properties.questions.items.properties.options.items.properties.value =
 		full.tools[0].parameters.properties.questions.items.properties.options.items.properties.value;
+	unchanged.properties.questions.items.properties.options.items.properties.label =
+		full.tools[0].parameters.properties.questions.items.properties.options.items.properties.label;
 	unchanged.properties.questions.items.properties.options.items.properties.recommended.description =
 		full.tools[0].parameters.properties.questions.items.properties.options.items.properties.recommended.description;
 	assert.deepEqual(unchanged, full.tools[0].parameters);
@@ -163,6 +170,7 @@ test("compact preparation fills only missing values and avoids explicit and deri
 	assert.equal(compact.response.details.error, undefined);
 	assert.match(compact.response.text, derivedValuePattern);
 	assert.match(compact.blankResponse, blankValuePattern);
+	assert.match(compact.invalidResponse, blankValuePattern);
 	assert.equal(full.prepared.questions[0].options[0].value, undefined);
 	assert.equal(Value.Check(full.tools[0].parameters, full.prepared), false);
 	assert.match(full.response.text, missingValuePattern);
@@ -231,7 +239,11 @@ test("compact rule inventory has a single observed home for each rule", () => {
 		["G2", "guideline", "1-3 concise questions"],
 		["G3", "parameters.questions[].prompt", "one decision at a time"],
 		["G4", "parameters.questions[].id", "stable question identifier"],
-		["G5", "parameters.questions[].options", "clear, distinct choices"],
+		[
+			"G5",
+			"parameters.questions[].options[].label",
+			"Required short visible option label",
+		],
 		[
 			"G6",
 			"parameters.questions[].options[].recommended",
@@ -253,14 +265,10 @@ test("compact rule inventory has a single observed home for each rule", () => {
 		["D1", "parameters.questions[].prompt", "Required direct question"],
 		[
 			"D2",
-			"parameters.questions[].options[].value",
-			"unique value is derived from the label",
-		],
-		[
-			"D3",
 			"parameters.questions[].options[].label",
-			"Required short visible option label",
+			"unique machine identifier is derived from this label",
 		],
+		["D3", "parameters.questions[].options[].label", "shown in the list"],
 		["C1", "config", "first read"],
 		["E1", "result.elaborated", "First answer the user's note directly"],
 	];
