@@ -18,17 +18,6 @@ import { registerPendingAskResume } from "./resume-pending-ask.ts";
 
 export default async function askExtension(pi: ExtensionAPI) {
 	resetAskConfigStore();
-	if (promptMode === "compact") {
-		pi.on("session_start", (_event, ctx) => {
-			if ((ctx.mode !== "print" && ctx.mode !== "json") || ctx.hasUI) {
-				return;
-			}
-			const activeTools = pi.getActiveTools();
-			if (activeTools.includes("ask_user")) {
-				pi.setActiveTools(activeTools.filter((name) => name !== "ask_user"));
-			}
-		});
-	}
 	// Keep the handler asynchronous for the full-mode golden test's registered-handler contract.
 	// biome-ignore lint/suspicious/useAwait: preserve the existing async handler shape.
 	pi.on("before_agent_start", async (event, ctx) => {

@@ -301,7 +301,7 @@ In compact mode, pi-ask leaves the system prompt unchanged. When the expanded us
 
 ## Non-TUI and non-interactive modes
 
-In compact mode, print and JSON sessions without a UI remove `ask_user` from the active tools at session start. No other active tool changes, and tools excluded by a CLI allowlist or denylist stay excluded. RPC and TUI keep `ask_user` active when it was active already. Full mode never changes the active tool list. The compact configuration-doc trigger remains active in headless sessions when the user's prompt matches; it does not require `ask_user` to be active.
+pi-ask never changes the active tool list, in either prompt mode. Print and JSON sessions keep `ask_user` active, so a model that needs a user decision gets the `Needs user input` result below and can stop. The compact configuration-doc trigger also runs in headless sessions when the user's prompt matches.
 
 The rich ask flow uses `ctx.ui.custom()` only in TUI mode. In RPC mode with a UI, pi-ask uses pi dialogs: single and preview options show labels and preview text before selection, multi options use repeated checkbox-prefixed selects with Done, and custom answers use input. The last select offers Submit or Cancel. Dismissing any dialog cancels as `user`; aborting cancels as `aborted`. RPC does not offer notes or Elaborate. Every dialog receives an abort signal. If `ask_user` is called directly without an interactive UI, it keeps the existing `Needs user input: ask_user requires interactive TUI mode.` content and `cancelReason: "ui_unavailable"` details.
 

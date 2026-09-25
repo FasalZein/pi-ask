@@ -52,20 +52,11 @@ function activeTools(mode: "compact" | "full") {
 	}>;
 }
 
-test("compact mode removes only active ask_user in print and JSON sessions", () => {
-	for (const { mode, initial, active } of activeTools("compact")) {
-		assert.deepEqual(
-			active,
-			mode === "print" || mode === "json"
-				? initial.filter((name) => name !== "ask_user")
-				: initial,
-			`${mode} with ${initial.join(", ")}`
-		);
-	}
-});
-
-test("full mode leaves every active tool unchanged in every session mode", () => {
-	for (const { mode, initial, active } of activeTools("full")) {
-		assert.deepEqual(active, initial, mode);
-	}
-});
+// Headless compact sessions keep ask_user so the model gets the "Needs user input" result and stops (#54).
+for (const promptMode of ["compact", "full"] as const) {
+	test(`${promptMode} mode leaves every active tool unchanged in every session mode`, () => {
+		for (const { mode, initial, active } of activeTools(promptMode)) {
+			assert.deepEqual(active, initial, `${mode} with ${initial.join(", ")}`);
+		}
+	});
+}
