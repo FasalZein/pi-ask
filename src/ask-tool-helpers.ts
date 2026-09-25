@@ -71,6 +71,7 @@ export function nonInteractiveResponse(
 		details: {
 			...toAskResult(state),
 			cancelled: true,
+			cancelReason: "ui_unavailable" as const,
 		},
 	};
 }
@@ -133,6 +134,7 @@ function errorResultDetails(
 	return {
 		title: params.title,
 		cancelled: true,
+		cancelReason: "invalid_input",
 		mode: "submit",
 		questions: [],
 		answers: {},

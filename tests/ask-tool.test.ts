@@ -139,6 +139,7 @@ test("ask tool returns pending questions in non-interactive mode", async () => {
 	);
 
 	assert.equal(result.details.cancelled, true);
+	assert.equal(result.details.cancelReason, "ui_unavailable");
 	assert.equal(result.details.mode, "submit");
 	assert.deepEqual(result.details.questions, [
 		{
@@ -171,7 +172,77 @@ test("ask tool does not open custom UI outside TUI mode", async () => {
 
 	assert.equal(customOpened, false);
 	assert.equal(result.details.cancelled, true);
+	assert.equal(result.details.cancelReason, "ui_unavailable");
 	assert.match(result.content[0].text, NON_INTERACTIVE_MESSAGE_RE);
+});
+
+test("ask tool reports unavailable UI in JSON mode without changing its content", async () => {
+	const { tool } = registerMockTool();
+	const result = await tool.execute(
+		"call-json",
+		sampleParams(),
+		undefined,
+		noop,
+		makeCtx(false, "json")
+	);
+
+	assert.equal(result.details.cancelled, true);
+	assert.equal(result.details.cancelReason, "ui_unavailable");
+	assert.equal(
+		result.content[0].text,
+		"Needs user input: ask_user requires interactive TUI mode.\n" +
+			"Run same tool call in interactive TUI mode, or ask user these questions manually:\n" +
+			"1. Goal: What should I optimize for?\n" +
+			"   - Speed [speed]\n" +
+			"   - Safety [safety]\n" +
+			"   - Type your own [custom]\n" +
+			"details.questions contains normalized pending questions. details.answers stays empty until user responds."
+	);
+});
+
+test("ask tool reports a user cancel from the TUI", async () => {
+	const { tool } = registerMockTool();
+	let component: { handleInput(data: string): void } | undefined;
+	const resultPromise = tool.execute(
+		"call-tui",
+		sampleParams(),
+		undefined,
+		noop,
+		{
+			cwd: process.cwd(),
+			mode: "tui",
+			ui: {
+				setWorkingVisible() {
+					// Visibility does not affect this tool result test.
+				},
+				custom(callback: (...args: unknown[]) => unknown) {
+					return new Promise((resolve) => {
+						component = callback(
+							{
+								requestRender() {
+									// Rendering does not affect this tool result test.
+								},
+							},
+							{
+								bg: (_color: string, text: string) => text,
+								fg: (_color: string, text: string) => text,
+							},
+							{},
+							resolve
+						) as typeof component;
+					});
+				},
+			},
+		}
+	);
+
+	await new Promise((resolve) => setImmediate(resolve));
+	assert(component);
+	component.handleInput("\x1b");
+	const result = await resultPromise;
+	assert.equal(result.details.cancelled, true);
+	assert.equal(result.details.cancelReason, "user");
+	assert.equal(result.content[0].text, "User cancelled the ask flow");
 });
 
 test("ask tool includes custom answer fallback for preview questions", async () => {
@@ -225,6 +296,7 @@ test("ask tool rejects invalid payloads before UI opens with structured issues",
 	);
 
 	assert.equal(result.details.cancelled, true);
+	assert.equal(result.details.cancelReason, "invalid_input");
 	assert.equal(result.details.mode, "submit");
 	assert.equal(result.details.questions.length, 0);
 	assert.deepEqual(result.details.error, {
