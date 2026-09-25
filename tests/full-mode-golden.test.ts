@@ -59,6 +59,9 @@ test("full-mode registered text matches upstream v1.2.0", async () => {
 		registerCommand() {
 			// Registration is outside the golden-text seam.
 		},
+		registerEntryRenderer() {
+			// Transcript display is outside the model-facing text seam.
+		},
 		events: {
 			on() {
 				// Remote events are outside the golden-text seam.

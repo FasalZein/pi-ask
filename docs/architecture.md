@@ -18,6 +18,7 @@ The codebase is split so the implementation reads through file boundaries and na
 - `src/answer-commands.ts` — `/answer`, `/answer:again`, and `/ask:replay` command wiring
 - `src/answer-extraction.ts` — configured, session-scope-aware extraction model selection, synthetic `ask_user` tool-call extraction, and tolerant text fallback
 - `src/ask-payload-store.ts` — branch-aware persisted ask payload lookup
+- `src/entry-renderers.ts` — TUI-only transcript markers for stored asks and recovery dismissals
 - `src/pending-ask.ts` — active-branch unresolved tool-call detection and recovery dismissal persistence
 - `src/resume-pending-ask.ts` — detached lifecycle wiring and recovered answer delivery
 - `src/notifications.ts` — best-effort ask notification payload rendering and channel execution

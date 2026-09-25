@@ -12,7 +12,7 @@ const probe = `
 import askExtension from "./src/index.ts";
 const tools = [];
 const pi = {
-  on() {}, registerCommand() {},
+  on() {}, registerCommand() {}, registerEntryRenderer() {},
   registerTool(tool) { tools.push(tool); },
   events: { on() {}, emit() {} },
 };

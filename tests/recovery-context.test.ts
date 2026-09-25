@@ -28,6 +28,9 @@ function contextHarness(branch: unknown[]) {
 		registerCommand() {
 			// Command registration is outside the request context seam.
 		},
+		registerEntryRenderer() {
+			// Transcript rendering is outside the request context seam.
+		},
 		events: {
 			on() {
 				// The remote bus is not used by this request.
