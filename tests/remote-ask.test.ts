@@ -221,6 +221,64 @@ test("remote runtime disposes active flows and submit listener", () => {
 	);
 });
 
+test("disposing remote flows closes an open command flow", {
+	timeout: 2000,
+}, async () => {
+	const bus = new TestEventBus();
+	const remoteAsk = createRemoteAskRuntime(bus as never);
+	let opened: () => void = () => {
+		/* wait for the custom UI */
+	};
+	const opening = new Promise<void>((resolve) => {
+		opened = resolve;
+	});
+	const resultPromise = runAskFlow(
+		{
+			cwd: process.cwd(),
+			mode: "tui",
+			ui: {
+				custom(callback: (...args: unknown[]) => unknown) {
+					return new Promise((resolve) => {
+						callback(
+							{
+								requestRender() {
+									/* no render needed */
+								},
+							},
+							plainTheme(),
+							{},
+							resolve
+						);
+						opened();
+					});
+				},
+			},
+		} as never,
+		{
+			questions: [
+				{
+					id: "decision",
+					prompt: "Proceed?",
+					options: [{ value: "yes", label: "Yes" }],
+				},
+			],
+		},
+		{
+			exec: async () => ({ stdout: "", stderr: "", code: 0, killed: false }),
+			remote: { runtime: remoteAsk, source: "answer" },
+		}
+	);
+	await opening;
+	remoteAsk.disposeAll();
+	const result = await resultPromise;
+	assert.equal(result.cancelReason, "aborted");
+	assert.equal(
+		bus.events.filter((event) => event.channel === PI_ASK_COMPLETED_EVENT)
+			.length,
+		1
+	);
+});
+
 test("remote submit resolves an active ask flow and emits lifecycle events", async () => {
 	getAskConfigStore().setConfig({
 		...DEFAULT_ASK_CONFIG,

@@ -80,6 +80,7 @@ interface AskFlowOptions {
 		source: RemoteAskSource;
 		toolCallId?: string;
 	};
+	shutdownSignal?: AbortSignal;
 	signal?: AbortSignal;
 }
 
@@ -98,10 +99,12 @@ interface AskFlowController {
 	dismissNotice?: string;
 	done: Done;
 	editor: Editor;
+	finished: boolean;
 	flowOptions: AskFlowOptions;
 	pendingQuestionTypeChangeQuestionId?: string;
 	pendingReviewShortcutActionIndex?: number;
 	remoteFlow?: RemoteAskFlowHandle;
+	removeAbortListeners: () => void;
 	settingsOpen: boolean;
 	state: AskState;
 	suppressAutoInputForSelection: boolean;
@@ -122,6 +125,9 @@ export async function runAskFlow(
 		presentSingleAsMulti:
 			options.presentSingleAsMulti ?? config.behaviour.presentSingleAsMulti,
 	};
+	if (flowOptions.signal?.aborted || flowOptions.shutdownSignal?.aborted) {
+		return abortedResult(createInitialState(params, flowOptions));
+	}
 	if (ctx.mode !== "tui") {
 		return {
 			...toAskResult(createInitialState(params, flowOptions)),
@@ -164,6 +170,10 @@ function createAskFlowController(
 			params.flowOptions.getCommands?.() ?? []
 		),
 		settingsOpen: false,
+		finished: false,
+		removeAbortListeners: () => {
+			// Replaced after the controller attaches abort listeners.
+		},
 		state: createInitialState(params, params.flowOptions),
 		suppressAutoInputForSelection: false,
 		pendingQuestionTypeChangeQuestionId: undefined,
@@ -188,10 +198,27 @@ function createAskFlowController(
 
 	controller.editor.onSubmit = (value) => submitEditor(controller, value);
 	controller.remoteFlow = startRemoteFlow(controller, params);
-	syncSelection(controller);
-	notifyCurrentQuestion(controller).catch(() => {
-		// Notification failures are best-effort and must not affect the ask flow.
+	const onAbort = () => finish(controller, abortedResult(controller.state));
+	params.flowOptions.signal?.addEventListener("abort", onAbort, { once: true });
+	params.flowOptions.shutdownSignal?.addEventListener("abort", onAbort, {
+		once: true,
 	});
+	controller.removeAbortListeners = () => {
+		params.flowOptions.signal?.removeEventListener("abort", onAbort);
+		params.flowOptions.shutdownSignal?.removeEventListener("abort", onAbort);
+	};
+	if (
+		params.flowOptions.signal?.aborted ||
+		params.flowOptions.shutdownSignal?.aborted
+	) {
+		onAbort();
+	}
+	syncSelection(controller);
+	if (!controller.finished) {
+		notifyCurrentQuestion(controller).catch(() => {
+			// Notification failures are best-effort and must not affect the ask flow.
+		});
+	}
 
 	return {
 		get focused() {
@@ -208,6 +235,7 @@ function createAskFlowController(
 			handleControllerInput(controller, data);
 		},
 		dispose() {
+			controller.removeAbortListeners();
 			controller.remoteFlow?.dispose();
 			controller.unsubscribeConfig();
 		},
@@ -589,11 +617,26 @@ async function notifyCurrentQuestion(
 	);
 }
 
+function abortedResult(state: AskState): AskResult {
+	return {
+		...toAskResult({ ...state, answers: {}, cancelled: true, completed: true }),
+		cancelReason: "aborted",
+	};
+}
+
+function finish(controller: AskFlowController, result: AskResult) {
+	if (controller.finished) {
+		return;
+	}
+	controller.finished = true;
+	controller.removeAbortListeners();
+	controller.remoteFlow?.complete(result);
+	controller.done(result);
+}
+
 function maybeFinish(controller: AskFlowController) {
 	if (controller.state.completed) {
-		const result = toAskResult(controller.state);
-		controller.remoteFlow?.complete(result);
-		controller.done(result);
+		finish(controller, toAskResult(controller.state));
 	}
 }
 
@@ -606,6 +649,7 @@ function startRemoteFlow(
 		return;
 	}
 	return remote.runtime.startFlow({
+		onAbort: () => finish(controller, abortedResult(controller.state)),
 		source: remote.source,
 		toolCallId: remote.toolCallId,
 		title: controller.state.title,

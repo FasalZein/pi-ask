@@ -116,6 +116,135 @@ test("ask params schema constrains question types", () => {
 	);
 });
 
+test("ask_user runs sequentially with other tools in its batch", () => {
+	const { tool } = registerMockTool();
+	assert.equal(
+		(tool as typeof tool & { executionMode?: string }).executionMode,
+		"sequential"
+	);
+});
+
+test("a pre-aborted ask returns without opening the UI", async () => {
+	const { tool } = registerMockTool();
+	const abort = new AbortController();
+	abort.abort();
+	let opened = false;
+	const result = await tool.execute(
+		"pre-aborted",
+		sampleParams(),
+		abort.signal,
+		noop,
+		{
+			mode: "tui",
+			ui: {
+				custom() {
+					opened = true;
+				},
+			},
+		}
+	);
+	assert.equal(opened, false);
+	assert.equal(result.details.cancelReason, "aborted");
+	assert.deepEqual(result.details.answers, {});
+	assert.equal(
+		result.content[0].text,
+		"The ask_user form was closed because the run was aborted. No answers were collected."
+	);
+});
+
+test("abort closes an open ask and emits remote completion", async () => {
+	const abort = new AbortController();
+	const events: Array<{ channel: string; data: any }> = [];
+	const handlers = new Map<string, (data: unknown) => void>();
+	const { createRemoteAskRuntime, PI_ASK_COMPLETED_EVENT } = await import(
+		"../src/remote-ask.ts"
+	);
+	const remote = createRemoteAskRuntime({
+		emit(channel: string, data: unknown) {
+			events.push({ channel, data });
+		},
+		on(channel: string, handler: (data: unknown) => void) {
+			handlers.set(channel, handler);
+			return () => {
+				handlers.delete(channel);
+			};
+		},
+	} as never);
+	const tools: any[] = [];
+	registerAskTool(
+		{
+			registerTool(value: unknown) {
+				tools.push(value);
+			},
+			appendEntry() {
+				// The fake only observes remote completion.
+			},
+			getCommands() {
+				return [];
+			},
+		} as never,
+		remote
+	);
+	let opened = false;
+	let component: { handleInput(data: string): void } | undefined;
+	let signalOpened: () => void = noop;
+	const opening = new Promise<void>((resolve) => {
+		signalOpened = resolve;
+	});
+	const pending = tools[0].execute(
+		"call-abort",
+		sampleParams(),
+		abort.signal,
+		noop,
+		{
+			cwd: process.cwd(),
+			mode: "tui",
+			ui: {
+				setWorkingVisible() {
+					// Visibility does not affect lifecycle.
+				},
+				custom(callback: (...args: unknown[]) => unknown) {
+					opened = true;
+					signalOpened();
+					return new Promise((resolve) => {
+						component = callback(
+							{
+								requestRender() {
+									// Rendering does not affect lifecycle.
+								},
+							},
+							{
+								bg: (_: string, text: string) => text,
+								fg: (_: string, text: string) => text,
+							},
+							{},
+							resolve
+						) as typeof component;
+					});
+				},
+			},
+		}
+	);
+	await opening;
+	assert.equal(opened, true);
+	assert(component);
+	component.handleInput("1");
+	abort.abort();
+	const result = await pending;
+	assert.equal(result.details.cancelReason, "aborted");
+	assert.deepEqual(result.details.answers, {});
+	assert.equal(
+		result.content[0].text,
+		"The ask_user form was closed because the run was aborted. No answers were collected."
+	);
+	assert.equal(
+		events.find((event) => event.channel === PI_ASK_COMPLETED_EVENT)?.data
+			.result.cancelReason,
+		"aborted"
+	);
+	remote.disposeAll();
+});
+
 test("ask tool stores valid payloads as soon as they are called", async () => {
 	const { entries, tool } = registerMockTool();
 	const params = sampleParams();
