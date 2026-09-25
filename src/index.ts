@@ -15,13 +15,15 @@ export default function askExtension(pi: ExtensionAPI) {
 		systemPrompt: `${event.systemPrompt}\n\n${PI_ASK_CONFIG_PROMPT}`,
 	}));
 	const remoteAsk = createRemoteAskRuntime(pi.events);
-	pi.on("session_shutdown", () => {
-		remoteAsk.disposeAll();
-	});
-	registerAskTool(pi, remoteAsk);
+	const shutdown = new AbortController();
+	registerAskTool(pi, remoteAsk, shutdown.signal);
 	registerAskSettingsCommand(pi);
 	registerAnswerCommands(pi, remoteAsk);
-	registerPendingAskResume(pi, remoteAsk);
+	registerPendingAskResume(pi, remoteAsk, shutdown.signal);
+	pi.on("session_shutdown", () => {
+		shutdown.abort();
+		remoteAsk.disposeAll();
+	});
 	registerRecoveryContext(pi);
 	registerAskEntryRenderers(pi);
 }

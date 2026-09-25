@@ -22,12 +22,18 @@ const DISMISS_NOTICE =
 
 export function registerPendingAskResume(
 	pi: ExtensionAPI,
-	remoteAsk: RemoteAskRuntime
+	remoteAsk: RemoteAskRuntime,
+	shutdownSignal?: AbortSignal
 ): void {
 	let reopening = false;
 
 	pi.on("session_start", (event, ctx) => {
-		if (reopening || ctx.mode !== "tui" || !REOPEN_REASONS.has(event.reason)) {
+		if (
+			reopening ||
+			shutdownSignal?.aborted ||
+			ctx.mode !== "tui" ||
+			!REOPEN_REASONS.has(event.reason)
+		) {
 			return;
 		}
 
@@ -38,7 +44,7 @@ export function registerPendingAskResume(
 
 		reopening = true;
 		queueMicrotask(() => {
-			reopenPendingAsk(pi, ctx, pendingAsk, remoteAsk)
+			reopenPendingAsk(pi, ctx, pendingAsk, remoteAsk, shutdownSignal)
 				.catch((error) => {
 					ctx.ui.notify(
 						`Could not reopen unanswered ask_user form: ${formatError(error)}`,
@@ -59,7 +65,8 @@ async function reopenPendingAsk(
 	>,
 	ctx: ExtensionContext,
 	pendingAsk: PendingAskToolCall,
-	remoteAsk: RemoteAskRuntime
+	remoteAsk: RemoteAskRuntime,
+	shutdownSignal?: AbortSignal
 ): Promise<void> {
 	ctx.ui.notify(
 		`Reopening unanswered ask_user form: ${pendingAsk.params.questions.length} question(s).`,
@@ -70,6 +77,7 @@ async function reopenPendingAsk(
 	let result: Awaited<ReturnType<typeof runAskFlow>>;
 	try {
 		result = await runAskFlow(ctx, pendingAsk.params, {
+			shutdownSignal,
 			exec: pi.exec,
 			getCommands: () => pi.getCommands(),
 			remote: {
@@ -82,6 +90,9 @@ async function reopenPendingAsk(
 		ctx.ui.setWorkingVisible(true);
 	}
 
+	if (shutdownSignal?.aborted) {
+		return;
+	}
 	appendPendingAskDismissal(pi, pendingAsk.toolCallId);
 	if (result.cancelled) {
 		ctx.ui.notify(DISMISS_NOTICE, "info");

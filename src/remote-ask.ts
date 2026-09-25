@@ -80,6 +80,7 @@ export interface RemoteAskFlowOptions {
 }
 
 export interface RemoteAskFlowInput extends RemoteAskFlowOptions {
+	onAbort?: () => void;
 	onSubmit: (response: RemoteAskResponse) => RemoteAskSubmitResolution;
 	questions: AskQuestion[];
 	title?: string;
@@ -114,6 +115,9 @@ export function createRemoteAskRuntime(events: EventBus): RemoteAskRuntime {
 
 	return {
 		disposeAll() {
+			for (const flow of [...activeFlows.values()]) {
+				flow.onAbort?.();
+			}
 			activeFlows.clear();
 			unsubscribeSubmit();
 		},

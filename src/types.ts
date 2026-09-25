@@ -124,7 +124,7 @@ export interface AskContinuationPayload {
 export interface AskResult {
 	answers: Record<string, AskResultAnswer>;
 	cancelled: boolean;
-	cancelReason?: "user" | "ui_unavailable" | "invalid_input";
+	cancelReason?: "user" | "aborted" | "ui_unavailable" | "invalid_input";
 	continuation?: AskContinuationPayload;
 	elaboration?: AskElaborationPayload;
 	error?: AskValidationError;

@@ -3,6 +3,7 @@ import test from "node:test";
 import { findLatestPayloadInCurrentBranch } from "../src/ask-payload-store.ts";
 import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
 import { getAskConfigStore } from "../src/config/store.ts";
+import askExtension from "../src/index.ts";
 import {
 	ASK_PENDING_DISMISSED_ENTRY_TYPE,
 	findPendingAskToolCall,
@@ -409,6 +410,106 @@ test("resumed cancel persists dismissal and does not reopen on a second resume",
 	assert.equal(completed.result.cancelReason, "user");
 
 	remoteAsk.disposeAll();
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+});
+
+test("session shutdown closes recovery without dismissal; startup still finds the pending ask", {
+	timeout: 2000,
+}, async () => {
+	const branch: unknown[] = [
+		askToolCall("call-shutdown"),
+		storedPayload("call-shutdown"),
+	];
+	const bus = new TestEventBus();
+	const handlers = new Map<string, (event: any, ctx: any) => void>();
+	let opened = 0;
+	let completed = 0;
+	let dismissedCount = 0;
+	let sentCount = 0;
+	let closeFlow: (() => void) | undefined;
+	bus.on(PI_ASK_COMPLETED_EVENT, () => {
+		completed += 1;
+	});
+	const ctx = {
+		cwd: process.cwd(),
+		mode: "tui",
+		isIdle: () => true,
+		sessionManager: { getBranch: () => branch },
+		ui: {
+			notify() {
+				// Notifications do not affect lifecycle.
+			},
+			setWorkingVisible() {
+				// Visibility does not affect lifecycle.
+			},
+			custom(
+				callback: (...args: any[]) => { handleInput(data: string): void }
+			) {
+				opened += 1;
+				return new Promise((resolve) => {
+					const component = callback(
+						{
+							requestRender() {
+								// Rendering does not affect lifecycle.
+							},
+						},
+						plainTheme(),
+						{},
+						resolve
+					);
+					closeFlow = () => component.handleInput("\x1b");
+				});
+			},
+		},
+	};
+	function loadExtension() {
+		const pi = {
+			events: bus,
+			on(name: string, handler: (event: any, ctx: any) => void) {
+				handlers.set(name, handler);
+			},
+			registerTool() {
+				// Registration is not under test.
+			},
+			registerCommand() {
+				// Registration is not under test.
+			},
+			registerEntryRenderer() {
+				// Registration is not under test.
+			},
+			getCommands() {
+				return [];
+			},
+			appendEntry(customType: string, data: unknown) {
+				dismissedCount += 1;
+				branch.push({ type: "custom", customType, data });
+			},
+			sendUserMessage() {
+				sentCount += 1;
+			},
+		};
+		askExtension(pi as never);
+		getAskConfigStore().setConfig(disabledNotificationConfig());
+	}
+	loadExtension();
+	handlers.get("session_start")?.({ reason: "startup" }, ctx);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(opened, 1);
+	handlers.get("session_shutdown")?.({ reason: "quit" }, ctx);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(completed, 1);
+	assert.equal(dismissedCount, 0);
+	assert.equal(sentCount, 0);
+	assert.equal(
+		findPendingAskToolCall(scannerContext(branch))?.toolCallId,
+		"call-shutdown"
+	);
+	loadExtension();
+	handlers.get("session_start")?.({ reason: "startup" }, ctx);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(opened, 2);
+	closeFlow?.();
+	await new Promise((resolve) => setImmediate(resolve));
 	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
 });
 

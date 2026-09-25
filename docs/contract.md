@@ -56,7 +56,7 @@ The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, e
   details: {
     title?: string;
     cancelled: boolean;
-    cancelReason?: "user" | "ui_unavailable" | "invalid_input";
+    cancelReason?: "user" | "aborted" | "ui_unavailable" | "invalid_input";
     error?: {
       kind: "invalid_input";
       issues: Array<{
@@ -172,7 +172,7 @@ The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, e
 
 ## Output rules
 
-- `cancelled: true` means the user dismissed the flow, UI was unavailable, or the payload was invalid before UI opened; every cancelled result includes `cancelReason`: `user` for cancel or dismiss (including command flows), `ui_unavailable` for non-interactive modes, or `invalid_input` for payload validation failures
+- `cancelled: true` means the user dismissed the flow, the run was aborted, UI was unavailable, or the payload was invalid before UI opened; every cancelled result includes `cancelReason`: `user` for cancel or dismiss (including command flows), `aborted` for a tool run interrupted by its abort signal, `ui_unavailable` for non-interactive modes, or `invalid_input` for payload validation failures. An aborted tool result says exactly: `The ask_user form was closed because the run was aborted. No answers were collected.` It contains no answers or compact follow-up hint.
 - semantically invalid payloads that reach tool execution return `error.kind === "invalid_input"` with structured `issues` and a transcript-friendly `Invalid ask_user payload:` message; their rendered status is `Invalid tool payload`
 - payloads missing schema-required fields fail Pi's schema validation before tool execution and use Pi's standard tool-error result without structured `details`
 - `mode: "submit"` is normal completion; `mode: "elaborate"` means the user asked the agent to continue with follow-up clarification based on notes
@@ -272,6 +272,10 @@ Dirty dismiss:
 
 - when `Confirm dismiss when dirty` is enabled, cancelling or dismissing a dirty ask flow requires the same action a second time
 - the dirty-dismiss warning stays visible until the user changes tabs in the ask flow
+
+## Execution and lifecycle
+
+`ask_user` requests sequential execution. When one assistant message calls it alongside other tools, pi runs the entire batch one call at a time. A pre-aborted call does not open the UI; aborting an open flow closes it and emits the remote `completed` event. On session shutdown, open flows close. An interrupted recovered ask has no dismissal marker or tool result, so startup can reopen it again.
 
 ## Non-TUI and non-interactive modes
 

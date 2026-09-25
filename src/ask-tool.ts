@@ -4,6 +4,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { appendAskPayload } from "./ask-payload-store.ts";
 import {
+	abortedResponse,
 	invalidPayloadResponse,
 	nonInteractiveResponse,
 	renderAskToolCall,
@@ -29,9 +30,11 @@ import { runAskFlow } from "./ui/controller.ts";
 
 export function registerAskTool(
 	pi: ExtensionAPI,
-	remoteAsk?: RemoteAskRuntime
+	remoteAsk?: RemoteAskRuntime,
+	shutdownSignal?: AbortSignal
 ) {
 	pi.registerTool({
+		executionMode: "sequential",
 		name: "ask_user",
 		label: "Ask User",
 		description:
@@ -54,7 +57,8 @@ export function registerAskTool(
 				signal,
 				onUpdate,
 				ctx,
-				remoteAsk
+				remoteAsk,
+				shutdownSignal
 			),
 		renderCall: renderAskToolCall,
 		renderResult: renderAskToolResult,
@@ -68,8 +72,12 @@ async function executeAskTool(
 	signal: AbortSignal | undefined,
 	_onUpdate: unknown,
 	ctx: ExtensionContext,
-	remoteAsk?: RemoteAskRuntime
+	remoteAsk?: RemoteAskRuntime,
+	shutdownSignal?: AbortSignal
 ) {
+	if (signal?.aborted || shutdownSignal?.aborted) {
+		return abortedResponse(params);
+	}
 	const config = await getAskConfigStore().getConfig();
 	const validation = validateParams(params, {
 		presentSingleAsMulti: config.behaviour.presentSingleAsMulti,
@@ -88,6 +96,7 @@ async function executeAskTool(
 	ctx.ui.setWorkingVisible(false);
 	try {
 		const result = await runAskFlow(ctx, params, {
+			shutdownSignal,
 			exec: pi.exec,
 			getCommands: () => pi.getCommands(),
 			signal,
@@ -95,7 +104,9 @@ async function executeAskTool(
 				? { runtime: remoteAsk, source: "tool", toolCallId }
 				: undefined,
 		});
-		return successfulResponse(result, pi.getCommands());
+		return result.cancelReason === "aborted"
+			? abortedResponse(params)
+			: successfulResponse(result, pi.getCommands());
 	} finally {
 		ctx.ui.setWorkingVisible(true);
 	}

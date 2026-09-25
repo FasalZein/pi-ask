@@ -48,6 +48,20 @@ export function invalidPayloadResponse(
 	};
 }
 
+export const ABORTED_ASK_TEXT =
+	"The ask_user form was closed because the run was aborted. No answers were collected.";
+
+export function abortedResponse(params: AskParams) {
+	return {
+		content: [{ type: "text" as const, text: ABORTED_ASK_TEXT }],
+		details: {
+			...toAskResult(createInitialState(params)),
+			cancelled: true,
+			cancelReason: "aborted" as const,
+		},
+	};
+}
+
 export function nonInteractiveResponse(
 	state: ReturnType<typeof createInitialState>
 ) {
