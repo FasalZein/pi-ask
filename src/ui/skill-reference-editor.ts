@@ -12,10 +12,15 @@ export class SkillReferenceEditor extends Editor {
 		}
 		const { line, col } = this.getCursor();
 		const before = (this.getLines()[line] ?? "").slice(0, col);
-		if (SKILL_COMPLETION_PREFIX.test(before)) {
-			// Private in pi-tui 0.84.1: no public request-menu API exists.
-			// biome-ignore lint/complexity/useLiteralKeys: pi-tui exposes no public autocomplete trigger.
-			this["tryTriggerAutocomplete"]();
+		if (!SKILL_COMPLETION_PREFIX.test(before)) {
+			return;
+		}
+		// Private in pi-tui 0.84.1-0.87.1: no public request-menu API exists.
+		// If a later pi-tui renames it, skip the mid-line menu instead of throwing
+		// on every keystroke; line-start completion still works through pi-tui.
+		const trigger: unknown = Reflect.get(this, "tryTriggerAutocomplete");
+		if (typeof trigger === "function") {
+			trigger.call(this);
 		}
 	}
 }
