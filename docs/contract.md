@@ -277,6 +277,10 @@ Dirty dismiss:
 
 `ask_user` requests sequential execution. When one assistant message calls it alongside other tools, pi runs the entire batch one call at a time. A pre-aborted call does not open the UI; aborting an open flow closes it and emits the remote `completed` event. On session shutdown, open flows close. An interrupted recovered ask has no dismissal marker or tool result, so startup can reopen it again.
 
+## Compact-mode configuration advice
+
+In compact mode, pi-ask leaves the system prompt unchanged. When the expanded user prompt mentions `pi-ask`, `ask_user`, `ask-user`, `/ask-settings`, `ask settings`, `/answer`, `/ask:replay`, `keymap`, or `keybinding` (case-insensitive), pi-ask sends the configuration-doc sentence as a hidden model-facing message. It sends only one copy while that message remains in the model context, and sends it again after compaction removes it. A typed `/ask-settings` extension command runs before prompt matching and does not trigger this message. Full mode continues to append the sentence to the system prompt on every run.
+
 ## Non-TUI and non-interactive modes
 
 The rich ask flow uses `ctx.ui.custom()` and opens only in TUI mode. In print, JSON, RPC, or any other non-TUI mode, the tool returns a `Needs user input: ask_user requires interactive TUI mode.` message in `content` and a cancelled result with `cancelReason: "ui_unavailable"` in `details` instead of opening custom UI.
