@@ -226,7 +226,7 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 - question notes via `Shift+N`
 - option notes via `n`
 - number-key quick selection
-- submit/elaborate/cancel review tab
+- review tab shows `Review · n of m answered`, then aligned ✓/– question rows with answers or `not answered`, then Submit, Elaborate, and Cancel actions
 - on the review tab, `Submit` and `Cancel` preview notes only for answered questions
 - on the review tab, `Elaborate` preview expands to all question notes and all option notes, including notes on unselected options
 - transcript-friendly call and result rendering
@@ -250,7 +250,7 @@ Main flow:
 - `global.settings` opens ask settings; default: `?`
 - `global.dismiss` dismisses the active ask surface; default: `Ctrl+C`
 - `main.nextTab` / `main.previousTab` move between tabs; defaults: `Tab`/`Right`, `Shift+Tab`/`Left`
-- `main.nextOption` / `main.previousOption` move between options or review actions; defaults: `Down`, `Up`
+- `main.nextOption` / `main.previousOption` move between options or review rows and actions; on review, Up from Submit focuses the last question row and Enter opens the focused question; defaults: `Down`, `Up`
 - `main.pageUp` / `main.pageDown` move question focus by one visible page, or scroll review answers without moving the selected action; defaults: `Shift+Up` / `PageUp`, `Shift+Down` / `PageDown`
 - `main.previewUp` / `main.previewDown` scroll long preview text in a bounded preview pane, without moving option focus; defaults: `[` and `]`
 - `main.confirm`, `main.cancel`, and `main.toggle` confirm, cancel, or toggle; defaults: `Enter`, `Esc`, `Space`
@@ -258,10 +258,10 @@ Main flow:
 - `main.optionNote` and `main.questionNote` open option/question notes; defaults: `n`, `Shift+N`
 - question options use `▶` for focus; multi-select options use `[ ]` and `[✓]`, and the question shows `Pick any · N of M selected` for predefined options (plus a selected custom answer, if any)
 - question footers show the configured up/down and next-tab navigation, plus fixed `1-9` shortcuts; editor footers do not advertise tab navigation
-- on a short terminal, the header, tabs, question prompt, multi-selection count, and footer stay fixed while option rows and review answers window to the available rows; focused options and review actions stay visible, and indicators count hidden options or review rows
+- on a short terminal, the header, tabs, question prompt, multi-selection count, and footer stay fixed while option rows and review answers window to the available rows; focused options, review rows, and review actions stay visible, and indicators count hidden options or review rows when space permits
 - the header shows `Question N of M` for questions and `Review` on the review tab; text tabs show ✓ after answered question labels, a filled active tab, and a separate `│ Review n/m` count; narrow tab rows keep the active tab visible and show overflow markers only for hidden tabs
 - pi `tui.select` up/down/confirm bindings also navigate and confirm when they do not conflict with an ask binding; pi select cancel never cancels an ask, and `Ctrl+C` still dismisses
-- `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel`
+- `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel` even when a question row has focus
 - when `Double-press review shortcuts` is enabled, review-tab `1`, `2`, and `3` require the same key twice without a timeout, and the review screen shows an inline hint for the pending action
 
 Editing flow:

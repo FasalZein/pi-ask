@@ -316,7 +316,6 @@ export function renderFooterKeymaps(
 	const main = getAskContextBindings(config, "main");
 	const editor = getAskContextBindings(config, "editor");
 	const noteEditor = getAskContextBindings(config, "noteEditor");
-	const bindings = getAskKeyBindings(config);
 	const noteNavigationLabel = `${main.optionNote.label}/${main.questionNote.label}`;
 	const moveLabel = `${main.previousOption.label}${main.nextOption.label}`;
 	const questionHint = footerHint(
@@ -336,8 +335,14 @@ export function renderFooterKeymaps(
 			footerHint(global.settings, "settings"),
 		],
 		submit: [
-			footerHint(bindings.numberShortcut, "hotkeys"),
-			footerHint(main.confirm, "confirm"),
+			`${moveLabel} answers/actions`,
+			footerHint(main.confirm, "open or confirm"),
+			"1-3 pick",
+			footerHint(
+				main.previousTab,
+				"back",
+				formatKeybindingLabel(config.keymaps.main.previousTab[0] ?? "shift+tab")
+			),
 			footerHint(main.cancel, "cancel"),
 			footerHint(global.settings, "settings"),
 		],

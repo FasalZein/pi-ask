@@ -110,6 +110,7 @@ interface AskFlowController {
 	previewScrollTop: number;
 	remoteFlow?: RemoteAskFlowHandle;
 	removeAbortListeners: () => void;
+	reviewFocusedRow?: number;
 	settingsOpen: boolean;
 	state: AskState;
 	suppressAutoInputForSelection: boolean;
@@ -279,6 +280,7 @@ function renderController(
 		editor: controller.editor,
 		footerNotice: getFooterNotice(controller),
 		reviewShortcutHint: getActiveReviewShortcutHint(controller),
+		reviewFocusedRow: controller.reviewFocusedRow,
 		state: controller.state,
 		theme: controller.theme,
 		width,
@@ -367,6 +369,7 @@ function handleNavigationCommand(
 ) {
 	switch (command.kind) {
 		case "moveTab":
+			controller.reviewFocusedRow = undefined;
 			clearReviewShortcutPending(controller);
 			clearQuestionTypeChangePending(controller);
 			commitState(controller, moveTab(controller.state, command.delta));
@@ -380,6 +383,9 @@ function handleNavigationCommand(
 			scrollPreview(controller, command.delta);
 			return;
 		case "moveOption":
+			if (moveReviewFocus(controller, command.delta)) {
+				return;
+			}
 			clearReviewShortcutPending(controller);
 			clearQuestionTypeChangePending(controller);
 			commitState(controller, moveOption(controller.state, command.delta));
@@ -402,6 +408,9 @@ function handleNavigationCommand(
 			openOptionNote(controller);
 			return;
 		case "confirm":
+			if (openFocusedReviewQuestion(controller)) {
+				return;
+			}
 			clearReviewShortcutPending(controller);
 			clearQuestionTypeChangePending(controller);
 			commitState(controller, confirmCurrentSelection(controller.state), {
@@ -424,16 +433,46 @@ function handleNavigationCommand(
 		case "showSettings":
 			showSettingsModal(controller);
 			return;
-		case "ignore":
-		case "editMoveTab":
-		case "editMoveOption":
-		case "editClose":
-		case "editSubmit":
-		case "delegateToEditor":
-			return;
 		default:
 			return;
 	}
+}
+
+function moveReviewFocus(
+	controller: AskFlowController,
+	delta: 1 | -1
+): boolean {
+	if (!isSubmitTab(controller.state)) {
+		return false;
+	}
+	const row = controller.reviewFocusedRow;
+	if (row !== undefined) {
+		const next = row + delta;
+		controller.reviewFocusedRow =
+			next >= controller.state.questions.length ? undefined : Math.max(0, next);
+	} else if (delta === -1 && controller.state.activeSubmitActionIndex === 0) {
+		controller.reviewFocusedRow = controller.state.questions.length - 1;
+	} else {
+		return false;
+	}
+	clearReviewShortcutPending(controller);
+	refresh(controller);
+	return true;
+}
+
+function openFocusedReviewQuestion(controller: AskFlowController): boolean {
+	const target = controller.reviewFocusedRow;
+	if (!isSubmitTab(controller.state) || target === undefined) {
+		return false;
+	}
+	controller.reviewFocusedRow = undefined;
+	let nextState = controller.state;
+	while (nextState.activeTabIndex !== target) {
+		nextState = moveTab(nextState, 1);
+	}
+	clearReviewShortcutPending(controller);
+	commitState(controller, nextState);
+	return true;
 }
 
 function scrollPreview(controller: AskFlowController, delta: 1 | -1) {
@@ -445,6 +484,7 @@ function scrollPreview(controller: AskFlowController, delta: 1 | -1) {
 }
 
 function handleNumberShortcut(controller: AskFlowController, digit: number) {
+	controller.reviewFocusedRow = undefined;
 	if (handleReviewShortcutNumber(controller, digit)) {
 		return;
 	}
@@ -557,6 +597,7 @@ function commitState(
 	options: { finish?: boolean; syncSelection?: boolean } = {}
 ) {
 	if (nextState.activeTabIndex !== controller.state.activeTabIndex) {
+		controller.reviewFocusedRow = undefined;
 		controller.viewport.scrollTop = 0;
 		controller.viewport.reviewScrollTop = 0;
 		controller.previewScrollTop = 0;
@@ -692,6 +733,7 @@ function handleReviewShortcutNumber(
 	}
 
 	controller.pendingReviewShortcutActionIndex = resolution.pendingActionIndex;
+	controller.reviewFocusedRow = undefined;
 	const nextState = resolution.confirmed
 		? applyNumberShortcut(controller.state, digit)
 		: {

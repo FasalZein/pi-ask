@@ -29,6 +29,7 @@ export function renderAskScreen(args: {
 	config: AskConfig;
 	footerNotice?: string;
 	reviewShortcutHint?: string;
+	reviewFocusedRow?: number;
 	state: AskState;
 	theme: Theme;
 	width: number;
@@ -73,7 +74,8 @@ export function renderAskScreen(args: {
 			},
 			args.viewport,
 			Math.max(1, (args.viewport?.rows ?? 24) - header.length - footer.length),
-			pageKeys
+			pageKeys,
+			args.reviewFocusedRow
 		);
 	} else {
 		renderQuestionBody(

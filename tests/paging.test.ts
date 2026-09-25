@@ -135,7 +135,7 @@ test("review body stays within 18 rows while its selected action stays visible",
 		viewport,
 	});
 	assert.equal(lines.length, 18);
-	assert.ok(lines.join("\n").includes("❯ 1. Submit"));
+	assert.ok(lines.join("\n").includes("▶ 1. Submit"));
 	assert.match(lines.join("\n"), BELOW_ROWS);
 	assert.ok(lines.at(-2)?.includes("settings"));
 });
@@ -178,7 +178,7 @@ test("review page shows later answers without losing the focused action", () => 
 	});
 	assert.equal(later.length, 18);
 	assert.ok(later.join("\n").includes("Q12"));
-	assert.ok(later.join("\n").includes("❯ 1. Submit"));
+	assert.ok(later.join("\n").includes("▶ 1. Submit"));
 	assert.ok(later.join("\n").includes("more rows above"));
 });
 
@@ -218,8 +218,8 @@ test("stacked review keeps focused actions visible while its answers scroll", ()
 		viewport,
 	});
 	assert.equal(lines.length, 18);
-	assert.ok(lines.some((line) => line.trim() === "Q12"));
-	assert.ok(lines.join("\n").includes("❯ 1. Submit"));
+	assert.ok(lines.some((line) => line.includes("– Q12")));
+	assert.ok(lines.join("\n").includes("▶ 1. Submit"));
 	assert.ok(lines.join("\n").includes("more rows above"));
 	assert.ok(lines.at(-2)?.includes("settings"));
 });
@@ -313,7 +313,9 @@ test("flow component pages by visible row height and accepts pi move aliases wit
 	assert.match(page, ABOVE_OPTIONS);
 	assert.ok(page.includes("Ctrl+J"));
 	component.handleInput("k");
-	assert.ok(component.render(80).join("\n").includes("Review answers"));
+	assert.ok(
+		component.render(80).join("\n").includes("Review · 1 of 1 answered")
+	);
 	component.handleInput("\u0003");
 	component.handleInput("\u0003");
 	const result = await flow;
@@ -450,14 +452,14 @@ test("review page key scrolls answers but leaves Submit visible", async () => {
 		component.handleInput("\t");
 	}
 	let lines = component.render(80);
-	assert.ok(lines.join("\n").includes("❯ 1. Submit"));
-	for (let index = 0; index < 9; index++) {
+	assert.ok(lines.join("\n").includes("▶ 1. Submit"));
+	for (let index = 0; index < 20; index++) {
 		component.handleInput("\x1b[6~");
 	}
 	lines = component.render(80);
 	assert.equal(lines.length, 18);
-	assert.ok(lines.some((line) => line.trim() === "Q12"));
-	assert.ok(lines.join("\n").includes("❯ 1. Submit"));
+	assert.ok(lines.some((line) => line.includes("– Q12")));
+	assert.ok(lines.join("\n").includes("▶ 1. Submit"));
 	assert.ok(lines.join("\n").includes("more rows above"));
 	component.handleInput("\u0003");
 	assert.equal((await flow).cancelled, true);
@@ -533,4 +535,73 @@ test("preview scroll keys move preview text without changing the focused option"
 	assert.ok(component.render(80).join("\n").includes("line 23"));
 	component.handleInput("\u0003");
 	assert.equal((await flow).cancelled, true);
+});
+
+test("focused review row follows the short-terminal window while actions and footer stay visible", () => {
+	const questions = Array.from({ length: 12 }, (_, index) => ({
+		id: `q${index + 1}`,
+		label: `Question ${index + 1}`,
+		prompt: "Choose",
+		options: [{ value: "yes", label: "Yes" }],
+	}));
+	let state = createInitialState({ title: "Demo", questions });
+	for (const _question of questions) {
+		state = moveTab(state, 1);
+	}
+	const viewport = {
+		rows: 18,
+		scrollTop: 0,
+		reviewScrollTop: 0,
+		reviewPageRows: 0,
+		optionStarts: [] as number[],
+		bodyRows: 0,
+	};
+	const lines = renderAskScreen({
+		config: DEFAULT_ASK_CONFIG,
+		state,
+		theme,
+		width: 80,
+		editor,
+		viewport,
+		reviewFocusedRow: 11,
+	});
+	assert.equal(lines.length, 18);
+	assert(lines.join("\n").includes("▶ – Question 12  not answered"));
+	assert(lines.join("\n").includes("1. Submit"));
+	assert(lines.join("\n").includes("settings"));
+	assert(lines.join("\n").includes("rows above"));
+});
+
+test("review with wrapped shortcut hint keeps all actions inside short viewport", () => {
+	const questions = Array.from({ length: 12 }, (_, index) => ({
+		id: `q${index + 1}`,
+		label: `Question ${index + 1}`,
+		prompt: "Choose",
+		options: [{ value: "yes", label: "Yes" }],
+	}));
+	let state = createInitialState({ title: "Demo", questions });
+	for (const _question of questions) {
+		state = moveTab(state, 1);
+	}
+	const viewport = {
+		rows: 18,
+		scrollTop: 0,
+		reviewScrollTop: 0,
+		reviewPageRows: 0,
+		optionStarts: [] as number[],
+		bodyRows: 0,
+	};
+	const lines = renderAskScreen({
+		config: DEFAULT_ASK_CONFIG,
+		state,
+		theme,
+		width: 45,
+		editor,
+		viewport,
+		reviewShortcutHint: "Press 1, 2, or 3 twice to confirm a review action.",
+	});
+	assert.equal(lines.length, 18);
+	assert(lines.some((line) => line.includes("3. Cancel")));
+	assert(lines.some((line) => line.includes("action.")));
+	assert(lines.at(-1)?.includes("─"));
 });
