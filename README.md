@@ -225,8 +225,6 @@ You can also talk to pi to configure this extension. When asked to customize pi-
 
 The default `ask_user` prompt mode is `full`, with the upstream v1.2.0 tool text. Set `PI_ASK_PROMPT_MODE=compact` in pi's environment before starting pi to use shorter tool text. The extension reads the variable once at load; restart or reload pi after changing it. Unset, empty, and `full` select full mode. Any other value selects full mode and logs one warning. Compact mode puts follow-up rules in tool text instead of results, asks for option labels only, derives unique machine values from labels, and limits each ask to four questions. Older calls with valid explicit values still work. Full mode still requires explicit values. Compact mode sends conditional configuration guidance when the user mentions pi-ask settings or keys.
 
-This package also bundles the `ask-user` skill profile from `skills/ask-user/SKILL.md`. It reinforces when to use the tool, is enabled by default when installed, and can be disabled via `pi config`. The skill was inspired by https://github.com/edlsh/pi-ask-user.
-
 You can still add your own agent instruction if you want to further reinforce usage.
 
 For exact input/output and UX guarantees, see [`docs/contract.md`](docs/contract.md).
@@ -239,14 +237,14 @@ For exact input/output and UX guarantees, see [`docs/contract.md`](docs/contract
 pi -e ./src/index.ts
 ```
 
-### Run in isolated test mode (extension + bundled skill only)
+### Run in isolated test mode (extension only)
 
 ```bash
 pnpm dev
 pnpm dev ../test
 ```
 
-`pnpm dev [path]` runs pi with `--no-extensions --no-skills --no-prompt-templates --no-themes --no-context-files`, loads this repo’s extension and `skills/ask-user`, and starts pi from `[path]` by changing directories before launch (defaults to `.`).
+`pnpm dev [path]` runs pi with `--no-extensions --no-skills --no-prompt-templates --no-themes --no-context-files`, loads this repo’s extension, and starts pi from `[path]` by changing directories before launch (defaults to `.`).
 
 ### Install dependencies
 

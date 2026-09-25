@@ -176,8 +176,7 @@ pi \
   --no-themes \
   --no-context-files \
   -e "$PWD/src/index.ts" \
-  -e /tmp/pi-ask-smoke.ts \
-  --skill "$PWD/skills/ask-user"
+  -e /tmp/pi-ask-smoke.ts
 ```
 
 Then ask Pi:

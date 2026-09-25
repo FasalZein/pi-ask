@@ -355,12 +355,6 @@ See [`remote-events.md`](remote-events.md) for payload shapes, examples, and a l
 
 The fallback message includes normalized pending questions and options so the caller can re-ask them manually. `details.questions` still contains normalized question metadata, while `details.answers` stays empty until a user responds.
 
-## Skill alignment (advisory)
-
-The auto-bundled skill profile at `skills/ask-user/SKILL.md` defines agent-side decision-gate guidance for when to call `ask_user`. It is enabled by default when the package is installed, but can be disabled via `pi config`.
-
-It is advisory only. If there is any conflict, contract + tests win.
-
 ## Source of truth
 
 Behavior should be verified against:
