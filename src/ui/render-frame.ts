@@ -20,12 +20,29 @@ export function renderFrameHeader(args: {
 	const add = (text = "") => lines.push(truncateToWidth(text, width));
 
 	add(theme.fg("accent", "─".repeat(Math.max(1, width))));
+	const progress = isSubmitTab(state)
+		? "Review"
+		: `Question ${state.activeTabIndex + 1} of ${state.questions.length}`;
+	const titleWidth = Math.max(0, width - visibleWidth(progress) - 1);
+	const title =
+		state.title && titleWidth > 0
+			? theme.fg(
+					"accent",
+					theme.bold(truncateToWidth(` ${state.title}`, titleWidth))
+				)
+			: "";
+	const space = Math.max(
+		1,
+		width - visibleWidth(title) - visibleWidth(progress)
+	);
+	add(`${title}${" ".repeat(space)}${theme.fg("dim", progress)}`);
 	if (state.title) {
-		add(` ${theme.fg("accent", theme.bold(state.title))}`);
 		add();
 	}
 	add(renderTabs(state, theme, width));
-	add();
+	if (state.title) {
+		add();
+	}
 }
 
 export function renderFrameFooter(args: {
@@ -52,18 +69,17 @@ export function renderFrameFooter(args: {
 	add(theme.fg("accent", "─".repeat(Math.max(1, width))));
 }
 
-const TAB_PREFIX = " ← ";
-const TAB_SUFFIX = " →";
 const TAB_SEPARATOR_WIDTH = visibleWidth(" ");
 
 function renderTabs(state: AskState, theme: Theme, width: number): string {
+	const answeredCount = state.questions.filter((question) =>
+		isQuestionAnswered(state, question.id)
+	).length;
 	const tabs = state.questions.map((question, index) => {
 		const active = state.activeTabIndex === index;
 		const answered = isQuestionAnswered(state, question.id);
-		const marker = answered ? "☒" : "☐";
-		const text = ` ${marker} ${question.label} `;
+		const text = ` ${question.label}${answered ? " ✓" : ""} `;
 		return {
-			text,
 			width: visibleWidth(text),
 			render: active
 				? theme.bg("selectedBg", theme.fg("text", text))
@@ -71,33 +87,34 @@ function renderTabs(state: AskState, theme: Theme, width: number): string {
 		};
 	});
 
-	const reviewText = " ☰ Review ";
+	const reviewText = `│ Review ${answeredCount}/${state.questions.length} `;
 	tabs.push({
-		text: reviewText,
 		width: visibleWidth(reviewText),
 		render: isSubmitTab(state)
 			? theme.bg("selectedBg", theme.fg("text", reviewText))
-			: theme.fg("success", reviewText),
+			: theme.fg("muted", reviewText),
 	});
 
-	const activeIndex = Math.min(state.activeTabIndex, tabs.length - 1);
-	const availableTabWidth = Math.max(
-		1,
-		width - visibleWidth(TAB_PREFIX) - visibleWidth(TAB_SUFFIX)
-	);
+	const widths = tabs.map((tab) => tab.width);
+	const totalWidth =
+		widths.reduce((sum, tabWidth) => sum + tabWidth, 0) +
+		(tabs.length - 1) * TAB_SEPARATOR_WIDTH;
+	const overflow = totalWidth > width;
+	// Reserve room for both markers before selecting a window. Only paint a marker
+	// on a side that actually hides a tab.
+	const availableWidth = Math.max(1, width - (overflow ? 5 : 0));
 	const { start, end } = getVisibleTabRange(
-		tabs.map((tab) => tab.width),
-		activeIndex,
-		availableTabWidth
+		widths,
+		Math.min(state.activeTabIndex, tabs.length - 1),
+		availableWidth
 	);
-	const leftArrow = theme.fg("dim", TAB_PREFIX.trimStart());
-	const rightArrow = theme.fg("dim", TAB_SUFFIX);
-	const visibleTabs = tabs
-		.slice(start, end + 1)
-		.map((tab) => tab.render)
-		.join(" ");
+	const left = start > 0 ? theme.fg("dim", " ‹ ") : "";
+	const right = end < tabs.length - 1 ? theme.fg("dim", " ›") : "";
 	return truncateToWidth(
-		`${TAB_PREFIX[0]}${leftArrow}${visibleTabs}${rightArrow}`,
+		`${left}${tabs
+			.slice(start, end + 1)
+			.map((tab) => tab.render)
+			.join(" ")}${right}`,
 		width
 	);
 }
