@@ -209,7 +209,7 @@ Agents can auto-discover and call `ask_user` when they need clarification instea
 Replay commands are branch-aware. They read persisted entries from the current pi session branch, so they work naturally with `/resume`, `/tree`, and conversation branching:
 
 - `/answer:again` reopens the latest form created by `/answer` on this branch
-- `/ask:replay` reopens the latest real `ask_user` form on this branch
+- `/ask:replay` reopens the latest real `ask_user` form on this branch. The main-editor shortcut is `Ctrl+Shift+R` by default; set `shortcuts.replay` in `pi-ask.json` to a Pi key id or `null` to disable it, then run `/reload`.
 
 Cancellation is local to the UI: closing a replayed form does not start a new agent turn. Submitted answers are sent back as a normal user follow-up message.
 

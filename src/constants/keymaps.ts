@@ -581,7 +581,7 @@ function coerceLegacyBinding(value: unknown, fallback: string[]): string[] {
 	return typeof value === "string" ? [value] : fallback;
 }
 
-function normalizeKeyId(
+export function normalizeKeyId(
 	rawKey: string
 ): { ok: true; keyId: string } | { ok: false; error: string } {
 	const normalizedInput = rawKey.trim();

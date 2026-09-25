@@ -1,6 +1,8 @@
+import type { KeyId } from "@earendil-works/pi-tui";
 import {
 	DEFAULT_ASK_KEYMAPS,
 	normalizeConfiguredKeymaps,
+	normalizeKeyId,
 } from "../constants/keymaps.ts";
 import type {
 	AskConfig,
@@ -14,6 +16,7 @@ const MAX_EXTRACTION_RETRIES = 3;
 const DEFAULT_EXTRACTION_TIMEOUT_MS = 30_000;
 
 export const DEFAULT_ASK_CONFIG: AskConfig = {
+	shortcuts: { replay: "ctrl+shift+r" },
 	answer: {
 		extractionModels: [
 			{ provider: "openai-codex", id: "gpt-5.4-mini" },
@@ -41,6 +44,7 @@ export function normalizeAskConfig(
 	config?: Partial<AskConfigFileV5> | AskConfig
 ): AskConfig {
 	return {
+		shortcuts: { replay: normalizeReplayShortcut(config?.shortcuts?.replay) },
 		answer: {
 			extractionModels:
 				config?.answer?.extractionModels?.filter(isValidModelPreference) ??
@@ -87,6 +91,7 @@ export function toAskConfigFileV5(config: AskConfig): AskConfigFileV5 {
 	const normalized = normalizeAskConfig(config);
 	return {
 		schemaVersion: 5,
+		shortcuts: { ...normalized.shortcuts },
 		answer: {
 			extractionModels: normalized.answer.extractionModels,
 			extractionRetries: normalized.answer.extractionRetries,
@@ -217,4 +222,18 @@ function positiveNumberOrDefault(value: unknown, fallback: number): number {
 	return typeof value === "number" && Number.isFinite(value) && value > 0
 		? value
 		: fallback;
+}
+
+function normalizeReplayShortcut(
+	replay: string | null | undefined
+): KeyId | null {
+	if (replay === null) {
+		return null;
+	}
+	const parsed = normalizeKeyId(
+		replay ?? DEFAULT_ASK_CONFIG.shortcuts.replay ?? "ctrl+shift+r"
+	);
+	return parsed.ok
+		? (parsed.keyId as KeyId)
+		: DEFAULT_ASK_CONFIG.shortcuts.replay;
 }

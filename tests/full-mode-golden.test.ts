@@ -56,6 +56,9 @@ test("full-mode registered text matches upstream v1.2.0", async () => {
 		registerTool(registered: typeof tool) {
 			tool = registered;
 		},
+		registerShortcut() {
+			// Main-editor shortcuts are outside this test seam.
+		},
 		registerCommand() {
 			// Registration is outside the golden-text seam.
 		},

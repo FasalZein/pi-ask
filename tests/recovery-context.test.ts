@@ -25,6 +25,9 @@ function contextHarness(branch: unknown[]) {
 		registerTool() {
 			// Tool registration is outside the request context seam.
 		},
+		registerShortcut() {
+			// Main-editor shortcuts are outside this test seam.
+		},
 		registerCommand() {
 			// Command registration is outside the request context seam.
 		},

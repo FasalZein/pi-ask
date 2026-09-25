@@ -18,7 +18,7 @@ Default path:
 
 `~/.pi/agent/extensions/pi-ask.json`
 
-If the file does not exist yet, pi-ask attempts to create it with the current default settings the first time the ask flow is used. If the config location is read-only or managed outside pi-ask, pi-ask uses built-in defaults for the session and leaves disk unchanged.
+If the file does not exist yet, pi-ask attempts to create it with the current default settings when the extension loads to register the replay shortcut. If the config location is read-only or managed outside pi-ask, pi-ask uses built-in defaults for the session and leaves disk unchanged.
 
 If the current file is missing, pi-ask reads the upstream `~/.pi/agent/extensions/eko24ive-pi-ask.json` as a fallback. It also supports the older `~/.pi/agent/eko24ive-pi-ask.json` location. The current file wins when both exist. Loading never changes either legacy file; saving always writes `pi-ask.json` and never renames or backs up a legacy file.
 
@@ -33,6 +33,7 @@ Unsupported future versions or invalid files are left unchanged and defaults are
 ```json
 {
   "schemaVersion": 5,
+  "shortcuts": { "replay": "ctrl+shift+r" },
   "answer": {
     "extractionModels": [
       { "provider": "openai-codex", "id": "<model-id>" },
@@ -96,6 +97,10 @@ Unsupported future versions or invalid files are left unchanged and defaults are
   }
 }
 ```
+
+## Main editor replay shortcut
+
+`shortcuts.replay` runs the same current-branch replay flow as `/ask:replay`, including its notice when no ask is available. The default is `"ctrl+shift+r"`. It is not a Pi 0.87.1 built-in binding or a pi-ask form binding. Set it to another supported Pi key id (for example `"alt+f7"`) or to `null` to turn it off. This is a main-editor shortcut, not a keymap inside the ask flow. Pi reports conflicts with other extension shortcuts and custom built-in keybindings at load. An invalid key id falls back to the default with a warning. Existing version 5 and legacy files without `shortcuts` use the default in memory; loading does not rewrite them. The shortcut registers at extension load, so run `/reload` or restart Pi after changing it. Settings saved during a session do not change the registered shortcut until reload.
 
 ## Answer extraction
 
@@ -417,6 +422,7 @@ When editing this config for a user:
 
 - preserve unrelated fields
 - keep `schemaVersion` at `5`
+- set `shortcuts.replay` to a supported Pi key id or `null` to disable the main-editor shortcut
 - preserve `answer.extractionModels` as explicit provider/id pairs
 - keep `answer.extractionRetries` between `0` and `3`
 - do not assign fixed numeric shortcuts (`1` through `9`) to configurable actions

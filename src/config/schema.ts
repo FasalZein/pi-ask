@@ -1,3 +1,4 @@
+import type { KeyId } from "@earendil-works/pi-tui";
 import { type Static, Type } from "typebox";
 import { Compile } from "typebox/compile";
 
@@ -108,6 +109,11 @@ const AskConfigKeymapsSchema = Type.Object({
 
 export const AskConfigFileV5Schema = Type.Object({
 	schemaVersion: Type.Literal(5),
+	shortcuts: Type.Optional(
+		Type.Object({
+			replay: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+		})
+	),
 	answer: Type.Optional(
 		Type.Object({
 			extractionModels: Type.Optional(
@@ -290,6 +296,7 @@ export interface AskConfig {
 		channels: AskNotificationChannel[];
 		enabled: boolean;
 	};
+	shortcuts: { replay: KeyId | null };
 }
 
 export const validateAskConfigFileV5 = Compile(AskConfigFileV5Schema);

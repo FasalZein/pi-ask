@@ -12,6 +12,9 @@ function renderers() {
 		registerTool() {
 			// Tool execution is outside this transcript seam.
 		},
+		registerShortcut() {
+			// Main-editor shortcuts are outside this test seam.
+		},
 		registerCommand() {
 			// Command execution is outside this transcript seam.
 		},
