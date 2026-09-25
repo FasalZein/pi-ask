@@ -7,10 +7,10 @@ import type {
 	AskStateAnswer,
 } from "./types.ts";
 
-export const PI_ASK_STARTED_EVENT = "@eko24ive/pi-ask:started";
-export const PI_ASK_COMPLETED_EVENT = "@eko24ive/pi-ask:completed";
-export const PI_ASK_SUBMIT_EVENT = "@eko24ive/pi-ask:submit";
-export const PI_ASK_SUBMIT_RESULT_EVENT = "@eko24ive/pi-ask:submit-result";
+export const PI_ASK_STARTED_EVENT = "pi-ask:started";
+export const PI_ASK_COMPLETED_EVENT = "pi-ask:completed";
+export const PI_ASK_SUBMIT_EVENT = "pi-ask:submit";
+export const PI_ASK_SUBMIT_RESULT_EVENT = "pi-ask:submit-result";
 
 export type RemoteAskSource =
 	| "tool"

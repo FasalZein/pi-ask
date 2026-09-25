@@ -50,7 +50,7 @@ function createList(
 			// test callback intentionally unused
 		});
 	return new AskSettingsList(plainTheme(), {
-		configPath: "/tmp/eko24ive-pi-ask.json",
+		configPath: "/tmp/pi-ask.json",
 		notice: options.notice,
 		onClose,
 		onSave: options.onSave ?? ((config) => Promise.resolve(config)),
@@ -69,7 +69,7 @@ test("settings list renders behaviour settings and config path", () => {
 	const text = list.render(72).join("\n");
 
 	assert(text.includes("╭"));
-	assert(text.includes("@eko24ive/pi-ask"));
+	assert(text.includes("@fasalzein/pi-ask"));
 	assert(text.includes("Live settings"));
 	assert(text.includes("Defaults for future asks"));
 	assert(text.includes("Auto-submit when answered without notes"));
@@ -81,7 +81,7 @@ test("settings list renders behaviour settings and config path", () => {
 	assert(text.includes("keymaps"));
 	assert(text.includes("notifications"));
 	assert(text.includes("extraction settings"));
-	assert(text.includes("/tmp/eko24ive-pi-ask.json"));
+	assert(text.includes("/tmp/pi-ask.json"));
 	assert(text.includes("Esc / Ctrl+C / ? to close"));
 	assert.equal(text.includes("Esc to cancel"), false);
 	assert.equal(text.includes("Keymaps"), false);
@@ -95,7 +95,7 @@ test("settings list stays within narrow render width", () => {
 
 	assert(lines.every((line) => visibleWidth(line) <= 28));
 	const text = lines.join("\n");
-	assert(text.includes("/tmp/eko24ive-pi-ask"));
+	assert(text.includes("/tmp/pi-ask"));
 	assert(text.includes("n"));
 });
 

@@ -1,6 +1,6 @@
 # pi-ask configuration
 
-This file is the source of truth for configuring `@eko24ive/pi-ask`.
+This file is the source of truth for configuring `@fasalzein/pi-ask`.
 
 When changing pi-ask settings:
 
@@ -14,11 +14,11 @@ pi-ask treats this file as user-owned config. It does not rewrite or back up the
 
 Default path:
 
-`~/.pi/agent/extensions/eko24ive-pi-ask.json`
+`~/.pi/agent/extensions/pi-ask.json`
 
 If the file does not exist yet, pi-ask attempts to create it with the current default settings the first time the ask flow is used. If the config location is read-only or managed outside pi-ask, pi-ask uses built-in defaults for the session and leaves disk unchanged.
 
-Older pi-ask versions wrote this file at `~/.pi/agent/eko24ive-pi-ask.json`. If that legacy file exists and the extensions config does not, pi-ask reads the legacy file as a fallback and leaves disk unchanged. If both files exist, pi-ask uses the extensions config and leaves the legacy root file untouched.
+If the current file is missing, pi-ask reads the upstream `~/.pi/agent/extensions/eko24ive-pi-ask.json` as a fallback. It also supports the older `~/.pi/agent/eko24ive-pi-ask.json` location. The current file wins when both exist. Loading never changes either legacy file; saving always writes `pi-ask.json` and never renames or backs up a legacy file.
 
 ## Config versions and migrations
 

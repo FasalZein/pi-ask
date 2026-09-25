@@ -7,7 +7,9 @@ import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
 import type { AskConfig } from "../src/config/schema.ts";
 import {
 	AskConfigStore,
+	getAskConfigPath,
 	getAskConfigStore,
+	getLegacyAskConfigPaths,
 	resetAskConfigStore,
 } from "../src/config/store.ts";
 
@@ -32,14 +34,36 @@ async function makeTempPath(name: string): Promise<string> {
 	const root = await import("node:fs/promises").then(({ mkdtemp }) =>
 		mkdtemp(join(tmpdir(), name))
 	);
-	return join(root, "eko24ive-pi-ask.json");
+	return join(root, "pi-ask.json");
 }
+
+test("default config discovery prioritizes fork file before upstream locations", async () => {
+	const root = await import("node:fs/promises").then(({ mkdtemp }) =>
+		mkdtemp(join(tmpdir(), "pi-ask-discovery-"))
+	);
+	const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+	try {
+		process.env.PI_CODING_AGENT_DIR = root;
+		assert.equal(getAskConfigPath(), join(root, "extensions", "pi-ask.json"));
+		assert.deepEqual(getLegacyAskConfigPaths(), [
+			join(root, "extensions", "eko24ive-pi-ask.json"),
+			join(root, "eko24ive-pi-ask.json"),
+		]);
+	} finally {
+		if (previousAgentDir === undefined) {
+			delete process.env.PI_CODING_AGENT_DIR;
+		} else {
+			process.env.PI_CODING_AGENT_DIR = previousAgentDir;
+		}
+		await rm(root, { force: true, recursive: true });
+	}
+});
 
 test("resetAskConfigStore reloads the global store from disk", async () => {
 	const root = await import("node:fs/promises").then(({ mkdtemp }) =>
 		mkdtemp(join(tmpdir(), "pi-ask-config-reset-"))
 	);
-	const path = join(root, "extensions", "eko24ive-pi-ask.json");
+	const path = join(root, "extensions", "pi-ask.json");
 	await mkdir(dirname(path), { recursive: true });
 	await writeFile(
 		path,
@@ -195,7 +219,7 @@ test("config store reads legacy root config without copying it", async () => {
 	const root = await import("node:fs/promises").then(({ mkdtemp }) =>
 		mkdtemp(join(tmpdir(), "pi-ask-config-legacy-"))
 	);
-	const path = join(root, "extensions", "eko24ive-pi-ask.json");
+	const path = join(root, "extensions", "pi-ask.json");
 	const legacyPath = join(root, "eko24ive-pi-ask.json");
 	await writeFile(
 		legacyPath,
@@ -230,7 +254,7 @@ test("config store leaves legacy root config when extensions config exists", asy
 	const root = await import("node:fs/promises").then(({ mkdtemp }) =>
 		mkdtemp(join(tmpdir(), "pi-ask-config-conflict-"))
 	);
-	const path = join(root, "extensions", "eko24ive-pi-ask.json");
+	const path = join(root, "extensions", "pi-ask.json");
 	const legacyPath = join(root, "eko24ive-pi-ask.json");
 	await mkdir(dirname(path), { recursive: true });
 	await writeFile(
@@ -270,6 +294,89 @@ test("config store leaves legacy root config when extensions config exists", asy
 	assert.equal(result.config.behaviour.showFooterHints, true);
 	assert.ok(await readFile(legacyPath, "utf-8"));
 	await rm(root, { force: true, recursive: true });
+});
+
+test("upstream extensions config loads as fallback and save leaves it byte-identical", async () => {
+	const root = await import("node:fs/promises").then(({ mkdtemp }) =>
+		mkdtemp(join(tmpdir(), "pi-ask-fork-legacy-"))
+	);
+	const path = join(root, "extensions", "pi-ask.json");
+	const legacyPath = join(root, "extensions", "eko24ive-pi-ask.json");
+	const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+	const legacyBytes = JSON.stringify({
+		...expectedConfigFile(),
+		behaviour: {
+			...DEFAULT_ASK_CONFIG.behaviour,
+			autoSubmitWhenAnsweredWithoutNotes: true,
+		},
+	});
+	try {
+		process.env.PI_CODING_AGENT_DIR = root;
+		await mkdir(dirname(path), { recursive: true });
+		await writeFile(legacyPath, legacyBytes);
+		const store = new AskConfigStore();
+		assert.equal(
+			(await store.ensureLoaded()).config.behaviour
+				.autoSubmitWhenAnsweredWithoutNotes,
+			true
+		);
+		await assert.rejects(readFile(path, "utf-8"));
+		await store.save(await store.getConfig());
+		assert.equal(await readFile(legacyPath, "utf-8"), legacyBytes);
+		assert.equal(
+			JSON.parse(await readFile(path, "utf-8")).behaviour
+				.autoSubmitWhenAnsweredWithoutNotes,
+			true
+		);
+		assert.deepEqual(await readdir(dirname(path)), [
+			"eko24ive-pi-ask.json",
+			"pi-ask.json",
+		]);
+	} finally {
+		if (previousAgentDir === undefined) {
+			delete process.env.PI_CODING_AGENT_DIR;
+		} else {
+			process.env.PI_CODING_AGENT_DIR = previousAgentDir;
+		}
+		await rm(root, { force: true, recursive: true });
+	}
+});
+
+test("current fork config wins over upstream extensions config", async () => {
+	const root = await import("node:fs/promises").then(({ mkdtemp }) =>
+		mkdtemp(join(tmpdir(), "pi-ask-fork-current-"))
+	);
+	const path = join(root, "extensions", "pi-ask.json");
+	const legacyPath = join(root, "extensions", "eko24ive-pi-ask.json");
+	const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+	try {
+		process.env.PI_CODING_AGENT_DIR = root;
+		await mkdir(dirname(path), { recursive: true });
+		await writeFile(path, JSON.stringify(expectedConfigFile()));
+		await writeFile(
+			legacyPath,
+			JSON.stringify({
+				...expectedConfigFile(),
+				behaviour: {
+					...DEFAULT_ASK_CONFIG.behaviour,
+					autoSubmitWhenAnsweredWithoutNotes: true,
+				},
+			})
+		);
+		const store = new AskConfigStore();
+		assert.equal(
+			(await store.ensureLoaded()).config.behaviour
+				.autoSubmitWhenAnsweredWithoutNotes,
+			false
+		);
+	} finally {
+		if (previousAgentDir === undefined) {
+			delete process.env.PI_CODING_AGENT_DIR;
+		} else {
+			process.env.PI_CODING_AGENT_DIR = previousAgentDir;
+		}
+		await rm(root, { force: true, recursive: true });
+	}
 });
 
 test("config store falls back only keymaps when configured keymaps are invalid", async () => {
