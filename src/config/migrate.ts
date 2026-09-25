@@ -1,4 +1,7 @@
-import { normalizeConfiguredKeymaps } from "../constants/keymaps.ts";
+import {
+	normalizeConfiguredKeymaps,
+	normalizeKeyId,
+} from "../constants/keymaps.ts";
 import { normalizeAskConfig } from "./defaults.ts";
 import {
 	AskConfigVersionMigrationError,
@@ -48,6 +51,11 @@ export function migrateAskConfig(raw: unknown): AskConfigMigrationResult {
 
 	const currentFile = migratedFile.config as AskConfigFileV5;
 	const config = normalizeAskConfig(currentFile);
+	const replay = currentFile.shortcuts?.replay;
+	const shortcutNotice =
+		typeof replay === "string" && !normalizeKeyId(replay).ok
+			? "Invalid replay shortcut. Using the default replay shortcut for this session. Edit the config and restart pi or run /reload."
+			: undefined;
 	const keymapsResult = normalizeConfiguredKeymaps(currentFile.keymaps);
 	if (!keymapsResult.ok) {
 		return {
@@ -56,7 +64,12 @@ export function migrateAskConfig(raw: unknown): AskConfigMigrationResult {
 				keymaps: normalizeAskConfig().keymaps,
 			},
 			migrated: migratedFile.migrated,
-			notice: `${keymapsResult.error} Using default ask keymaps for this session. Edit the config and restart pi or run /reload.`,
+			notice: [
+				`${keymapsResult.error} Using default ask keymaps for this session. Edit the config and restart pi or run /reload.`,
+				shortcutNotice,
+			]
+				.filter(Boolean)
+				.join(" "),
 		};
 	}
 
@@ -66,5 +79,6 @@ export function migrateAskConfig(raw: unknown): AskConfigMigrationResult {
 			keymaps: keymapsResult.keymaps,
 		},
 		migrated: migratedFile.migrated,
+		notice: shortcutNotice,
 	};
 }

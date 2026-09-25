@@ -23,6 +23,7 @@ function expectedConfigFile(
 ) {
 	return {
 		schemaVersion: 5,
+		shortcuts: DEFAULT_ASK_CONFIG.shortcuts,
 		answer: DEFAULT_ASK_CONFIG.answer,
 		behaviour: overrides.behaviour ?? DEFAULT_ASK_CONFIG.behaviour,
 		keymaps: DEFAULT_ASK_CONFIG.keymaps,
@@ -415,5 +416,23 @@ test("config store falls back only keymaps when configured keymaps are invalid",
 	assert.equal(result.config.behaviour.showFooterHints, false);
 	assert.deepEqual(result.config.keymaps, DEFAULT_ASK_CONFIG.keymaps);
 	assert.match(result.notice?.text ?? "", DEFAULT_KEYMAPS_NOTICE_PATTERN);
+	await rm(dirname(path), { force: true, recursive: true });
+});
+
+test("config store persists a disabled replay shortcut and leaves an existing file untouched on load", async () => {
+	const path = await makeTempPath("pi-ask-shortcut-");
+	const content = JSON.stringify({
+		...expectedConfigFile(),
+		shortcuts: { replay: null },
+	});
+	await writeFile(path, content);
+	const store = new AskConfigStore(path);
+	assert.equal((await store.getConfig()).shortcuts.replay, null);
+	assert.equal(await readFile(path, "utf-8"), content);
+	await store.save(await store.getConfig());
+	assert.equal(
+		JSON.parse(await readFile(path, "utf-8")).shortcuts.replay,
+		null
+	);
 	await rm(dirname(path), { force: true, recursive: true });
 });

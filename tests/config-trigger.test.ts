@@ -43,7 +43,7 @@ import askExtension from "./src/index.ts";
 const handlers = new Map();
 askExtension({
   on(name, handler) { handlers.set(name, handler); },
-  registerTool() {}, registerCommand() {}, registerEntryRenderer() {},
+  registerTool() {}, registerShortcut() {}, registerCommand() {}, registerEntryRenderer() {},
   events: { on() {}, emit() {} },
 });
 const beforeStart = handlers.get("before_agent_start");

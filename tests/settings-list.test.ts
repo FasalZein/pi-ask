@@ -7,6 +7,7 @@ import type { AskConfigNotice } from "../src/config/store.ts";
 import { AskSettingsList } from "../src/ui/settings-list.ts";
 
 const savedConfig: AskConfig = {
+	shortcuts: DEFAULT_ASK_CONFIG.shortcuts,
 	answer: {
 		...DEFAULT_ASK_CONFIG.answer,
 	},

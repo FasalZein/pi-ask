@@ -11,7 +11,7 @@ import askExtension from "./src/index.ts";
 import { successfulResponse } from "./src/ask-tool-helpers.ts";
 const tools = [];
 const pi = {
-  on() {}, registerCommand() {}, registerEntryRenderer() {}, appendEntry() {}, getCommands() { return []; },
+  on() {}, registerShortcut() {}, registerCommand() {}, registerEntryRenderer() {}, appendEntry() {}, getCommands() { return []; },
   registerTool(tool) { tools.push(tool); },
   events: { on() {}, emit() {} },
 };

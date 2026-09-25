@@ -188,3 +188,51 @@ test("/answer replay delivers the same skill pointer in its user message", async
 		configStore.setConfig(DEFAULT_ASK_CONFIG);
 	}
 });
+
+test("replay shortcut uses the command replay path including the missing notice", async () => {
+	const { DEFAULT_ASK_CONFIG } = await import("../src/config/defaults.ts");
+	const { getAskConfigStore } = await import("../src/config/store.ts");
+	const { registerReplayShortcut } = await import("../src/answer-commands.ts");
+	const store = getAskConfigStore();
+	const notifications: Array<{ message: string; type: string }> = [];
+	const shortcuts = new Map<string, (ctx: any) => Promise<void>>();
+	const pi = {
+		registerShortcut(
+			key: string,
+			options: { handler: (ctx: any) => Promise<void> }
+		) {
+			shortcuts.set(key, options.handler);
+		},
+	};
+	const ctx = {
+		mode: "tui",
+		sessionManager: { getBranch: () => [] },
+		ui: {
+			notify(message: string, type: string) {
+				notifications.push({ message, type });
+			},
+		},
+	};
+	try {
+		store.setConfig(DEFAULT_ASK_CONFIG);
+		await registerReplayShortcut(pi as never);
+		assert.deepEqual([...shortcuts.keys()], ["ctrl+shift+r"]);
+		await shortcuts.get("ctrl+shift+r")?.(ctx);
+		assert.deepEqual(notifications, [
+			{
+				message: "No previous ask_user form found on this branch.",
+				type: "info",
+			},
+		]);
+		shortcuts.clear();
+		store.setConfig({ ...DEFAULT_ASK_CONFIG, shortcuts: { replay: "alt+f7" } });
+		await registerReplayShortcut(pi as never);
+		assert.deepEqual([...shortcuts.keys()], ["alt+f7"]);
+		shortcuts.clear();
+		store.setConfig({ ...DEFAULT_ASK_CONFIG, shortcuts: { replay: null } });
+		await registerReplayShortcut(pi as never);
+		assert.equal(shortcuts.size, 0);
+	} finally {
+		store.setConfig(DEFAULT_ASK_CONFIG);
+	}
+});

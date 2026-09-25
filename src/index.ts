@@ -1,5 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { registerAnswerCommands } from "./answer-commands.ts";
+import {
+	registerAnswerCommands,
+	registerReplayShortcut,
+} from "./answer-commands.ts";
 import { registerAskSettingsCommand } from "./ask-settings-command.ts";
 import { registerAskTool } from "./ask-tool.ts";
 import { resetAskConfigStore } from "./config/store.ts";
@@ -13,7 +16,7 @@ import { registerRecoveryContext } from "./recovery-context.ts";
 import { createRemoteAskRuntime } from "./remote-ask.ts";
 import { registerPendingAskResume } from "./resume-pending-ask.ts";
 
-export default function askExtension(pi: ExtensionAPI) {
+export default async function askExtension(pi: ExtensionAPI) {
 	resetAskConfigStore();
 	if (promptMode === "compact") {
 		pi.on("session_start", (_event, ctx) => {
@@ -60,4 +63,5 @@ export default function askExtension(pi: ExtensionAPI) {
 	});
 	registerRecoveryContext(pi);
 	registerAskEntryRenderers(pi);
+	await registerReplayShortcut(pi, remoteAsk);
 }

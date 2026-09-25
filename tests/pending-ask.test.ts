@@ -598,6 +598,9 @@ test("session shutdown closes recovery without dismissal; startup still finds th
 			registerTool() {
 				// Registration is not under test.
 			},
+			registerShortcut() {
+				// Main-editor shortcuts are outside this test seam.
+			},
 			registerCommand() {
 				// Registration is not under test.
 			},

@@ -39,6 +39,34 @@ type ExtractionUiResult =
 	| { error: string }
 	| { params: AskParams };
 
+export async function registerReplayShortcut(
+	pi: ExtensionAPI,
+	remoteAsk?: RemoteAskRuntime
+): Promise<void> {
+	const { replay } = (await getAskConfigStore().getConfig()).shortcuts;
+	if (replay === null) {
+		return;
+	}
+	pi.registerShortcut(replay, {
+		description: "Replay the previous ask_user form on this branch",
+		handler: (ctx) => runAskReplay(pi, ctx, remoteAsk),
+	});
+}
+
+function runAskReplay(
+	pi: ExtensionAPI,
+	ctx: ExtensionContext,
+	remoteAsk?: RemoteAskRuntime
+): Promise<void> {
+	return runReplayCommand(pi, ctx, {
+		missingMessage: "No previous ask_user form found on this branch.",
+		noticePrefix: "Replaying previous ask_user form on this branch",
+		remoteSource: "ask:replay",
+		source: "tool",
+		remoteAsk,
+	});
+}
+
 export function registerAnswerCommands(
 	pi: ExtensionAPI,
 	remoteAsk?: RemoteAskRuntime
@@ -64,14 +92,7 @@ export function registerAnswerCommands(
 
 	pi.registerCommand("ask:replay", {
 		description: "Replay the previous ask_user form on this branch",
-		handler: async (_args, ctx) =>
-			runReplayCommand(pi, ctx, {
-				missingMessage: "No previous ask_user form found on this branch.",
-				noticePrefix: "Replaying previous ask_user form on this branch",
-				remoteSource: "ask:replay",
-				source: "tool",
-				remoteAsk,
-			}),
+		handler: async (_args, ctx) => runAskReplay(pi, ctx, remoteAsk),
 	});
 }
 
@@ -247,7 +268,7 @@ function formatExtractionError(error: string): string {
 
 async function runReplayCommand(
 	pi: ExtensionAPI,
-	ctx: ExtensionCommandContext,
+	ctx: ExtensionContext,
 	options: {
 		missingMessage: string;
 		noticePrefix: string;

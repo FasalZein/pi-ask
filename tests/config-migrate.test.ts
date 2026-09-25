@@ -5,6 +5,7 @@ import { migrateAskConfig } from "../src/config/migrate.ts";
 import { CURRENT_ASK_CONFIG_SCHEMA_VERSION } from "../src/config/migrations/index.ts";
 
 const INVALID_CONFIG_PATTERN = /Config was invalid or unsupported/;
+const INVALID_REPLAY_SHORTCUT_PATTERN = /Invalid replay shortcut/;
 
 const currentConfigFile = {
 	schemaVersion: CURRENT_ASK_CONFIG_SCHEMA_VERSION,
@@ -177,4 +178,36 @@ test("config migration framework rejects unversioned config files", () => {
 			}),
 		INVALID_CONFIG_PATTERN
 	);
+});
+
+test("replay shortcut defaults for existing config and supports custom or disabled bindings", () => {
+	assert.equal(
+		migrateAskConfig(currentConfigFile).config.shortcuts.replay,
+		"ctrl+shift+r"
+	);
+	assert.equal(
+		migrateAskConfig({ ...currentConfigFile, shortcuts: { replay: "alt+f7" } })
+			.config.shortcuts.replay,
+		"alt+f7"
+	);
+	assert.equal(
+		migrateAskConfig({ ...currentConfigFile, shortcuts: { replay: null } })
+			.config.shortcuts.replay,
+		null
+	);
+	assert.equal(
+		migrateAskConfig({ schemaVersion: 1 }).config.shortcuts.replay,
+		"ctrl+shift+r"
+	);
+});
+
+test("invalid replay shortcut leaves other settings intact and warns", () => {
+	const result = migrateAskConfig({
+		...currentConfigFile,
+		shortcuts: { replay: "not+a+key" },
+		behaviour: { showFooterHints: false },
+	});
+	assert.equal(result.config.shortcuts.replay, "ctrl+shift+r");
+	assert.equal(result.config.behaviour.showFooterHints, false);
+	assert.match(result.notice ?? "", INVALID_REPLAY_SHORTCUT_PATTERN);
 });

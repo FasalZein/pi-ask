@@ -235,7 +235,7 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 - `/answer` command to convert the latest completed assistant message into an `AskParams` form through a synthetic `ask_user` tool call and open the ask UI
 - `/answer` extraction may use an internal `freeform: true` option for open-ended questions with no explicit choices; these render as user-input-only questions with the label `Type your answer:`, no numbered option row, and no selection caret; this marker is not part of the public `ask_user` tool contract
 - `/answer:again` command to replay the latest `/answer`-extracted form on the current branch
-- `/ask:replay` command to replay the latest real `ask_user` form on the current branch
+- `/ask:replay` command and configurable main-editor shortcut to replay the latest real `ask_user` form on the current branch; the shortcut uses the same missing-form notice, defaults to `ctrl+shift+r`, and can be disabled with `shortcuts.replay: null`; key changes require `/reload`
 - automatic recovery of the newest unresolved `ask_user` form on startup, resume, fork, or in-session `/tree` navigation
 - ask settings list with binary behaviour/notification toggles and a guarded reset-to-defaults action
 - `?` in the ask flow and `/ask-settings` in pi open the same lightweight ask settings overlay
