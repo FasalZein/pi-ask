@@ -54,7 +54,7 @@ import {
 } from "./dismiss-guard.ts";
 import type { AskInputCommand } from "./input.ts";
 import { getInputCommand } from "./input.ts";
-import { renderAskScreen } from "./render.ts";
+import { type AskViewport, renderAskScreen } from "./render.ts";
 import {
 	getReviewShortcutHint,
 	resolveReviewShortcutDoublePress,
@@ -101,8 +101,10 @@ interface AskFlowController {
 	editor: Editor;
 	finished: boolean;
 	flowOptions: AskFlowOptions;
+	keybindings: Keybindings;
 	pendingQuestionTypeChangeQuestionId?: string;
 	pendingReviewShortcutActionIndex?: number;
+	previewScrollTop: number;
 	remoteFlow?: RemoteAskFlowHandle;
 	removeAbortListeners: () => void;
 	settingsOpen: boolean;
@@ -111,6 +113,7 @@ interface AskFlowController {
 	theme: Theme;
 	tui: Tui;
 	unsubscribeConfig: () => void;
+	viewport: AskViewport;
 }
 
 export async function runAskFlow(
@@ -148,7 +151,7 @@ export async function runAskFlow(
 }
 
 function createAskFlowController(
-	[tui, theme, _keybindings, done]: [
+	[tui, theme, keybindings, done]: [
 		Tui,
 		Theme,
 		Keybindings,
@@ -171,6 +174,9 @@ function createAskFlowController(
 		),
 		settingsOpen: false,
 		finished: false,
+		keybindings,
+		previewScrollTop: 0,
+		viewport: createAskViewport(tui.terminal?.rows ?? 24),
 		removeAbortListeners: () => {
 			// Replaced after the controller attaches abort listeners.
 		},
@@ -242,11 +248,28 @@ function createAskFlowController(
 	};
 }
 
+function createAskViewport(rows: number): AskViewport {
+	return {
+		rows,
+		scrollTop: 0,
+		optionStarts: [],
+		bodyRows: 0,
+		reviewScrollTop: 0,
+		reviewPageRows: 0,
+	};
+}
+
 function renderController(
 	controller: AskFlowController,
 	width: number
 ): string[] {
+	controller.viewport.rows = controller.tui.terminal?.rows ?? 24;
 	return renderAskScreen({
+		viewport: controller.viewport,
+		previewScrollTop: controller.previewScrollTop,
+		onPreviewScrollTop: (top) => {
+			controller.previewScrollTop = top;
+		},
 		config: controller.config,
 		editor: controller.editor,
 		footerNotice: getFooterNotice(controller),
@@ -259,12 +282,28 @@ function renderController(
 
 function handleControllerInput(controller: AskFlowController, data: string) {
 	controller.editor.disableSubmit = !isNativeEditorSubmitEnabled(controller);
-	const command = getInputCommand(
+	let command = getInputCommand(
 		controller.state,
 		controller.config,
 		data,
 		isEditingView(controller.state) ? controller.editor.getText() : ""
 	);
+	// Ask bindings win over pi aliases. In particular, Ctrl+C must dismiss, not cancel.
+	if (
+		command.kind === "ignore" &&
+		typeof controller.keybindings.matches === "function"
+	) {
+		for (const [binding, alias] of [
+			["tui.select.up", { kind: "moveOption", delta: -1 }],
+			["tui.select.down", { kind: "moveOption", delta: 1 }],
+			["tui.select.confirm", { kind: "confirm" }],
+		] as const) {
+			if (controller.keybindings.matches(data, binding)) {
+				command = alias;
+				break;
+			}
+		}
+	}
 	if (isEditingView(controller.state)) {
 		handleEditingCommand(controller, command, data);
 		return;
@@ -327,6 +366,14 @@ function handleNavigationCommand(
 			clearQuestionTypeChangePending(controller);
 			commitState(controller, moveTab(controller.state, command.delta));
 			return;
+		case "page":
+			clearReviewShortcutPending(controller);
+			clearQuestionTypeChangePending(controller);
+			pageSelection(controller, command.delta);
+			return;
+		case "previewScroll":
+			scrollPreview(controller, command.delta);
+			return;
 		case "moveOption":
 			clearReviewShortcutPending(controller);
 			clearQuestionTypeChangePending(controller);
@@ -362,15 +409,7 @@ function handleNavigationCommand(
 			handleExitFlow(controller, cancelFlow(controller.state));
 			return;
 		case "numberShortcut":
-			if (handleReviewShortcutNumber(controller, command.digit)) {
-				return;
-			}
-			clearReviewShortcutPending(controller);
-			clearQuestionTypeChangePending(controller);
-			commitState(
-				controller,
-				applyNumberShortcut(controller.state, command.digit)
-			);
+			handleNumberShortcut(controller, command.digit);
 			return;
 		case "dismiss":
 			clearReviewShortcutPending(controller);
@@ -390,6 +429,58 @@ function handleNavigationCommand(
 		default:
 			return;
 	}
+}
+
+function scrollPreview(controller: AskFlowController, delta: 1 | -1) {
+	controller.previewScrollTop = Math.max(
+		0,
+		controller.previewScrollTop + delta
+	);
+	refresh(controller);
+}
+
+function handleNumberShortcut(controller: AskFlowController, digit: number) {
+	if (handleReviewShortcutNumber(controller, digit)) {
+		return;
+	}
+	clearReviewShortcutPending(controller);
+	clearQuestionTypeChangePending(controller);
+	commitState(controller, applyNumberShortcut(controller.state, digit));
+}
+
+function pageSelection(controller: AskFlowController, direction: 1 | -1) {
+	if (isSubmitTab(controller.state)) {
+		controller.viewport.reviewScrollTop = Math.max(
+			0,
+			controller.viewport.reviewScrollTop +
+				direction * controller.viewport.reviewPageRows
+		);
+		refresh(controller);
+		return;
+	}
+	// Measure the same wrapped rows that are displayed, not the number of options.
+	renderController(controller, controller.tui.terminal?.columns ?? 80);
+	const { optionStarts, bodyRows } = controller.viewport;
+	const selected = isSubmitTab(controller.state)
+		? controller.state.activeSubmitActionIndex
+		: controller.state.activeOptionIndex;
+	const currentLine = optionStarts[selected] ?? 0;
+	const targetLine = currentLine + direction * bodyRows;
+	const target =
+		direction > 0
+			? optionStarts.reduce(
+					(index, start, candidate) =>
+						start <= targetLine ? candidate : index,
+					selected
+				)
+			: optionStarts.findIndex((start) => start >= targetLine);
+	const nextIndex = target < 0 ? 0 : target;
+	const delta = nextIndex === selected ? direction : nextIndex - selected;
+	let state = controller.state;
+	for (let step = 0; step < Math.abs(delta); step++) {
+		state = moveOption(state, direction);
+	}
+	commitState(controller, state);
 }
 
 function handleToggleCurrentOption(controller: AskFlowController) {
@@ -455,7 +546,13 @@ function commitState(
 	options: { finish?: boolean; syncSelection?: boolean } = {}
 ) {
 	if (nextState.activeTabIndex !== controller.state.activeTabIndex) {
+		controller.viewport.scrollTop = 0;
+		controller.viewport.reviewScrollTop = 0;
+		controller.previewScrollTop = 0;
 		clearFooterNotices(controller);
+	}
+	if (nextState.activeOptionIndex !== controller.state.activeOptionIndex) {
+		controller.previewScrollTop = 0;
 	}
 	controller.suppressAutoInputForSelection = false;
 	controller.state = nextState;

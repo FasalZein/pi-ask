@@ -245,9 +245,13 @@ Main flow:
 - `global.dismiss` dismisses the active ask surface; default: `Ctrl+C`
 - `main.nextTab` / `main.previousTab` move between tabs; defaults: `Tab`/`Right`, `Shift+Tab`/`Left`
 - `main.nextOption` / `main.previousOption` move between options or review actions; defaults: `Down`, `Up`
+- `main.pageUp` / `main.pageDown` move question focus by one visible page, or scroll review answers without moving the selected action; defaults: `Shift+Up` / `PageUp`, `Shift+Down` / `PageDown`
+- `main.previewUp` / `main.previewDown` scroll long preview text in a bounded preview pane, without moving option focus; defaults: `[` and `]`
 - `main.confirm`, `main.cancel`, and `main.toggle` confirm, cancel, or toggle; defaults: `Enter`, `Esc`, `Space`
 - `main.changeQuestionType` changes the active question type (non-preview: `single <-> multi`; preview: `preview <-> multi`); default: `t`; destructive `multi -> single` changes require pressing the type hotkey again, with no timeout, and the pending confirmation clears on other navigation/actions
 - `main.optionNote` and `main.questionNote` open option/question notes; defaults: `n`, `Shift+N`
+- on a short terminal, the header, tabs, and footer stay fixed while question bodies and review answers window to the available rows; focused options and review actions stay visible, and indicators count hidden options or review rows
+- pi `tui.select` up/down/confirm bindings also navigate and confirm when they do not conflict with an ask binding; pi select cancel never cancels an ask, and `Ctrl+C` still dismisses
 - `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel`
 - when `Double-press review shortcuts` is enabled, review-tab `1`, `2`, and `3` require the same key twice without a timeout, and the review screen shows an inline hint for the pending action
 

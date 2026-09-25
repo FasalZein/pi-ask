@@ -123,6 +123,10 @@ function cloneKeymaps(keymaps: AskConfigKeymaps): AskConfigKeymaps {
 		main: {
 			cancel: [...keymaps.main.cancel],
 			changeQuestionType: [...keymaps.main.changeQuestionType],
+			pageUp: [...keymaps.main.pageUp],
+			pageDown: [...keymaps.main.pageDown],
+			previewUp: [...keymaps.main.previewUp],
+			previewDown: [...keymaps.main.previewDown],
 			confirm: [...keymaps.main.confirm],
 			nextOption: [...keymaps.main.nextOption],
 			nextTab: [...keymaps.main.nextTab],

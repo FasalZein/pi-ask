@@ -12,6 +12,8 @@ import type { AskState } from "../types.ts";
 export type AskInputCommand =
 	| { kind: "moveTab"; delta: 1 | -1 }
 	| { kind: "moveOption"; delta: 1 | -1 }
+	| { kind: "page"; delta: 1 | -1 }
+	| { kind: "previewScroll"; delta: 1 | -1 }
 	| { kind: "toggleMulti" }
 	| { kind: "openQuestionNote" }
 	| { kind: "openOptionNote" }
@@ -134,6 +136,10 @@ function getNavigationInputCommand(
 	if (matchesBinding(data, bindings.nextOption)) {
 		return { kind: "moveOption", delta: 1 };
 	}
+	const paging = getPagingCommand(bindings, data);
+	if (paging) {
+		return paging;
+	}
 	if (matchesBinding(data, bindings.toggle)) {
 		return { kind: "toggleMulti" };
 	}
@@ -157,4 +163,23 @@ function getNavigationInputCommand(
 	return digit === null
 		? { kind: "ignore" }
 		: { kind: "numberShortcut", digit };
+}
+
+function getPagingCommand(
+	bindings: ReturnType<typeof getAskContextBindings<"main">>,
+	data: string
+): AskInputCommand | undefined {
+	if (matchesBinding(data, bindings.pageUp)) {
+		return { kind: "page", delta: -1 };
+	}
+	if (matchesBinding(data, bindings.pageDown)) {
+		return { kind: "page", delta: 1 };
+	}
+	if (matchesBinding(data, bindings.previewUp)) {
+		return { kind: "previewScroll", delta: -1 };
+	}
+	if (matchesBinding(data, bindings.previewDown)) {
+		return { kind: "previewScroll", delta: 1 };
+	}
+	return;
 }

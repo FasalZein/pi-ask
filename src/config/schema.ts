@@ -69,6 +69,10 @@ const AskConfigKeymapsSchema = Type.Object({
 	main: Type.Object({
 		cancel: Type.Optional(AskKeyBindingSchema),
 		changeQuestionType: Type.Optional(AskKeyBindingSchema),
+		pageUp: Type.Optional(AskKeyBindingSchema),
+		pageDown: Type.Optional(AskKeyBindingSchema),
+		previewUp: Type.Optional(AskKeyBindingSchema),
+		previewDown: Type.Optional(AskKeyBindingSchema),
 		confirm: Type.Optional(AskKeyBindingSchema),
 		nextOption: Type.Optional(AskKeyBindingSchema),
 		nextTab: Type.Optional(AskKeyBindingSchema),
@@ -239,6 +243,10 @@ export interface AskConfigKeymaps {
 	main: {
 		cancel: string[];
 		changeQuestionType: string[];
+		pageUp: string[];
+		pageDown: string[];
+		previewUp: string[];
+		previewDown: string[];
 		confirm: string[];
 		nextOption: string[];
 		nextTab: string[];

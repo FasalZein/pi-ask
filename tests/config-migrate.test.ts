@@ -19,6 +19,36 @@ test("config migration framework accepts the current schema version", () => {
 	assert.deepEqual(result.config, DEFAULT_ASK_CONFIG);
 });
 
+test("existing v5 keymaps receive only the new paging and preview defaults", () => {
+	const main = Object.fromEntries(
+		Object.entries(DEFAULT_ASK_CONFIG.keymaps.main).filter(
+			([action]) =>
+				!["pageUp", "pageDown", "previewUp", "previewDown"].includes(action)
+		)
+	);
+	const result = migrateAskConfig({
+		...currentConfigFile,
+		keymaps: {
+			...DEFAULT_ASK_CONFIG.keymaps,
+			main: { ...main, confirm: ["ctrl+k"] },
+		},
+	});
+	assert.equal(result.migrated, false);
+	assert.equal(result.notice, undefined);
+	assert.deepEqual(result.config.keymaps.main.confirm, ["ctrl+k"]);
+	for (const action of [
+		"pageUp",
+		"pageDown",
+		"previewUp",
+		"previewDown",
+	] as const) {
+		assert.deepEqual(
+			result.config.keymaps.main[action],
+			DEFAULT_ASK_CONFIG.keymaps.main[action]
+		);
+	}
+});
+
 test("config migration maps previous-version config files into current shape", () => {
 	const legacyKeymaps = {
 		cancel: "q",

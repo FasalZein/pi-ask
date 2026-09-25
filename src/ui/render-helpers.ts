@@ -268,9 +268,14 @@ export function renderPreviewPaneContent(
 		  }
 		| undefined,
 	theme: Theme,
-	width: number
+	width: number,
+	scrollTop = 0,
+	scrollHint = "[ ]",
+	maxRows = 14,
+	onScrollTop?: (top: number) => void
 ): string[] {
 	if (!selectedOption) {
+		onScrollTop?.(0);
 		return renderBox([{ text: NO_PREVIEW_TEXT, color: "dim" }], width, theme);
 	}
 
@@ -282,12 +287,37 @@ export function renderPreviewPaneContent(
 	}
 	content.push({ text: "", color: "dim" });
 
-	for (const previewLine of (selectedOption.preview ?? NO_PREVIEW_TEXT).split(
-		"\n"
-	)) {
+	const innerWidth = Math.max(
+		4,
+		Math.max(UI_DIMENSIONS.boxMinWidth, width) - 2
+	);
+	const previewLines = (selectedOption.preview ?? NO_PREVIEW_TEXT)
+		.split("\n")
+		.flatMap((line) => wrapText(line, innerWidth));
+	// Keep two frame rows and one scroll hint inside the 14-line preview box.
+	const headingRows = content.reduce(
+		(count, item) => count + wrapText(item.text, innerWidth).length,
+		0
+	);
+	const pageSize = Math.max(1, maxRows - headingRows - 3);
+	const clipped = previewLines.length > pageSize;
+	const offset = Math.max(
+		0,
+		Math.min(scrollTop, previewLines.length - pageSize)
+	);
+	onScrollTop?.(offset);
+	for (const previewLine of clipped
+		? previewLines.slice(offset, offset + pageSize)
+		: previewLines) {
 		content.push({
 			text: previewLine,
 			color: selectedOption.preview ? "text" : "dim",
+		});
+	}
+	if (clipped) {
+		content.push({
+			text: `↑ ${offset} above · ↓ ${previewLines.length - offset - pageSize} more · ${scrollHint} scroll`,
+			color: "dim",
 		});
 	}
 	return renderBox(content, width, theme);

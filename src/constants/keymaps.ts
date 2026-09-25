@@ -95,6 +95,10 @@ export const DEFAULT_ASK_KEYMAPS: AskConfigKeymaps = {
 		confirm: ["enter"],
 		cancel: ["esc"],
 		changeQuestionType: ["t"],
+		pageUp: ["shift+up", "pageUp"],
+		pageDown: ["shift+down", "pageDown"],
+		previewUp: ["["],
+		previewDown: ["]"],
 		toggle: ["space"],
 		nextTab: ["tab", "right"],
 		previousTab: ["shift+tab", "left"],
@@ -136,6 +140,10 @@ const DESCRIPTIONS: Record<AskKeymapContext, Record<string, string>> = {
 		confirm: "Confirm selection, continue, or submit",
 		cancel: "Cancel flow",
 		changeQuestionType: "Change current question type",
+		pageUp: "Move one page up",
+		pageDown: "Move one page down",
+		previewUp: "Scroll preview up",
+		previewDown: "Scroll preview down",
 		toggle: "Toggle selected option",
 		nextTab: "Switch to next tab",
 		previousTab: "Switch to previous tab",
@@ -411,6 +419,14 @@ function normalizeContextKeymaps(
 	const normalized: Record<string, string[]> = {};
 	for (const action of Object.keys(defaults)) {
 		const rawValue = rawContext[action];
+		if (
+			rawValue === undefined &&
+			["pageUp", "pageDown", "previewUp", "previewDown"].includes(action) &&
+			context === "main"
+		) {
+			normalized[action] = [...defaults[action]];
+			continue;
+		}
 		if (rawValue === undefined) {
 			return { ok: false, error: `Missing keymap for ${context}.${action}.` };
 		}
@@ -611,6 +627,10 @@ function cloneKeymaps(keymaps: AskConfigKeymaps): AskConfigKeymaps {
 			confirm: [...keymaps.main.confirm],
 			cancel: [...keymaps.main.cancel],
 			changeQuestionType: [...keymaps.main.changeQuestionType],
+			pageUp: [...keymaps.main.pageUp],
+			pageDown: [...keymaps.main.pageDown],
+			previewUp: [...keymaps.main.previewUp],
+			previewDown: [...keymaps.main.previewDown],
 			toggle: [...keymaps.main.toggle],
 			nextTab: [...keymaps.main.nextTab],
 			previousTab: [...keymaps.main.previousTab],

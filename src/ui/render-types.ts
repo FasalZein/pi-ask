@@ -12,7 +12,13 @@ export type Theme = ExtensionContext["ui"]["theme"];
 export interface QuestionRenderContext {
 	editor: Editor;
 	lines: string[];
+	onOptionRow?: (index: number, start: number, end: number) => void;
+	onPreviewBox?: (rows: number) => void;
+	onPreviewScrollTop?: (top: number) => void;
 	options: ReturnType<typeof getRenderableOptions>;
+	previewMaxRows?: number;
+	previewScrollHint?: string;
+	previewScrollTop?: number;
 	question: NonNullable<ReturnType<typeof getCurrentQuestion>>;
 	state: AskState;
 	theme: Theme;
