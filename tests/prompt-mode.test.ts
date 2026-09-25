@@ -19,6 +19,7 @@ askExtension(pi);
 process.env.PI_ASK_PROMPT_MODE = "compact";
 askExtension(pi);
 const submitted = { cancelled: false, mode: "submit", questions: [], answers: {} };
+const elaborated = { ...submitted, mode: "elaborate", elaboration: { items: [{ target: { kind: "question" }, question: { id: "q", label: "Goal", prompt: "Choose a goal", type: "single", options: [{ value: "speed", label: "Speed" }] }, note: "Why?", answered: false }] } };
 const raw = { questions: [{ id: "q", prompt: "Pick", options: [
   { label: "Offline only" }, { label: "Offline only" },
   { value: "offline-only-2", label: "Explicit" }, { label: "Offline only" },
@@ -27,7 +28,7 @@ const prepared = tools[0].prepareArguments(raw);
 const response = await tools[0].execute("missing-value", prepared, undefined, undefined, { mode: "print" });
 const blank = tools[0].prepareArguments({ questions: [{ id: "q", prompt: "Pick", options: [{ value: "", label: "Blank value" }] }] });
 const blankResponse = await tools[0].execute("blank-value", blank, undefined, undefined, { mode: "print" });
-console.log(JSON.stringify({ tools: tools.map(({ description, promptSnippet, promptGuidelines, parameters }) => ({ description, promptSnippet, promptGuidelines, parameters })), result: successfulResponse(submitted).content[0].text, prepared, response: { text: response.content[0].text, details: response.details }, blankResponse: blankResponse.content[0].text }));
+console.log(JSON.stringify({ tools: tools.map(({ description, promptSnippet, promptGuidelines, parameters }) => ({ description, promptSnippet, promptGuidelines, parameters })), result: successfulResponse(submitted).content[0].text, elaborated: successfulResponse(elaborated).content[0].text, prepared, response: { text: response.content[0].text, details: response.details }, blankResponse: blankResponse.content[0].text }));
 `;
 
 function registeredText(mode: string | undefined) {
@@ -220,6 +221,7 @@ test("compact rule inventory has a single observed home for each rule", () => {
 	const homes: Record<string, string> = {
 		guideline: tool.promptGuidelines.join(" "),
 		config: PI_ASK_CONFIG_PROMPT,
+		"result.elaborated": compact.elaborated,
 		...descriptions,
 	};
 	// Inventory from the compact-mode rule allocation in spec #1.
@@ -260,6 +262,7 @@ test("compact rule inventory has a single observed home for each rule", () => {
 			"Required short visible option label",
 		],
 		["C1", "config", "first read"],
+		["E1", "result.elaborated", "First answer the user's note directly"],
 	];
 	assert.deepEqual(
 		rules.map(([id]) => id),
@@ -279,6 +282,7 @@ test("compact rule inventory has a single observed home for each rule", () => {
 			"D2",
 			"D3",
 			"C1",
+			"E1",
 		]
 	);
 	for (const [id, path, phrase] of rules) {
@@ -327,5 +331,6 @@ test("no normalized rule sentence occurs twice in compact registered tool text",
 		add(guideline);
 	}
 	visit(tool.parameters);
+	add(compact.elaborated);
 	assert.equal(new Set(sentences).size, sentences.length);
 });
