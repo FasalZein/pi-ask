@@ -223,6 +223,8 @@ Kudos to [@k0valik](https://github.com/k0valik) for the `/answer` idea.
 
 You can also talk to pi to configure this extension. When asked to customize pi-ask settings, keymaps, notifications, or extraction behavior, the agent is instructed to read the bundled `docs/configuration.md` guide first and then edit the config file accordingly.
 
+The default `ask_user` prompt mode is `full`, with the upstream v1.2.0 tool text. Set `PI_ASK_PROMPT_MODE=compact` in pi's environment before starting pi to use shorter tool text. The extension reads the variable once at load; restart or reload pi after changing it. Unset, empty, and `full` select full mode. Any other value selects full mode and logs one warning. Compact-mode follow-up and conditional configuration guidance are separate changes and are not enabled by this switch yet.
+
 This package also bundles the `ask-user` skill profile from `skills/ask-user/SKILL.md`. It reinforces when to use the tool, is enabled by default when installed, and can be disabled via `pi config`. The skill was inspired by https://github.com/edlsh/pi-ask-user.
 
 You can still add your own agent instruction if you want to further reinforce usage.

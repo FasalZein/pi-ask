@@ -86,10 +86,13 @@ test("ask option schema and tool guidance support grounded recommendations", () 
 		true
 	);
 	assert(
-		tool.promptGuidelines.some(
-			(guideline) =>
-				guideline.includes("grounded preferences") &&
-				guideline.includes("description")
+		[
+			...tool.promptGuidelines,
+			tool.parameters.properties.questions.items.properties.options.items
+				.properties.recommended.description,
+		].some(
+			(guidance) =>
+				guidance.includes("grounded") && guidance.includes("description")
 		)
 	);
 });

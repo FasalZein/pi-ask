@@ -4,6 +4,10 @@
 
 This document defines the stable external behavior. It does not explain internal helper-by-helper implementation.
 
+## Prompt mode
+
+The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, empty, and `full` keep the upstream v1.2.0 description, guidelines, and parameter schema. `compact` uses a shorter description, one guideline, and an instructional `recommended` description; all other parameter descriptions and the tool snippet remain unchanged. Unknown values use full mode and log one warning. The tool definition does not change between turns. Follow-up hints and conditional configuration guidance are not active in compact mode yet.
+
 ## Input
 
 ```ts
