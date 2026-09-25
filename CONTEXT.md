@@ -97,8 +97,9 @@ The single place where a rule lives in compact prompt mode.
 **Config sentence**:
 The model-facing instruction to read the pi-ask configuration doc before changing pi-ask settings or keymaps.
 
-**Follow-up hint**:
-The compact-mode line appended to submitted and elaborated results that carries the follow-up rules.
+**Follow-up rules**:
+The rules for asking again after an answer: use another structured `ask_user` call instead of plain-text choices, bundle the next 2-3 related decisions, and ask one at a time only when a question depends on the previous answer. In compact mode they live in the tool text (one guideline line and the `questions` parameter description), never in results. A per-result hint was removed in #30 because it made models keep asking.
+_Avoid_: follow-up hint
 
 ### Verification
 

@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { Value } from "typebox/value";
 import { PI_ASK_CONFIG_PROMPT } from "../src/prompt-text.ts";
+import { prepareAskParams } from "../src/state/normalize.ts";
 
 // Each process loads the extension once, just as pi does. A mode change after load must not redefine the tool.
 const probe = `
@@ -164,6 +165,25 @@ test("compact preparation fills only missing values and avoids explicit and deri
 	assert.equal(full.prepared.questions[0].options[0].value, undefined);
 	assert.equal(Value.Check(full.tools[0].parameters, full.prepared), false);
 	assert.match(full.response.text, missingValuePattern);
+});
+
+test("compact preparation strips accents from derived values", () => {
+	const prepared = prepareAskParams(
+		{
+			questions: [
+				{
+					id: "q",
+					prompt: "Pick",
+					options: [{ label: "Résumé" }, { label: "Zürich office" }],
+				},
+			],
+		},
+		true
+	) as { questions: Array<{ options: Array<{ value: string }> }> };
+	assert.deepEqual(
+		prepared.questions[0].options.map((option) => option.value),
+		["resume", "zurich-office"]
+	);
 });
 
 test("unset, empty, and full preserve full text; unknown mode warns once", () => {

@@ -173,6 +173,27 @@ test("pending ask scan prefers its valid persisted payload", () => {
 	assert.equal(pending?.params, persistedParams);
 });
 
+test("pending ask fallback fills missing option values only when the mode fills them", () => {
+	const valueless = {
+		questions: [
+			{
+				id: "engine",
+				prompt: "Chart engine?",
+				options: [{ label: "Canvas" }, { label: "SVG" }],
+			},
+		],
+	};
+	const branch = scannerContext([askToolCall("call-1", valueless)]);
+
+	assert.equal(findPendingAskToolCall(branch, false), undefined);
+	assert.deepEqual(
+		findPendingAskToolCall(branch, true)?.params.questions[0].options.map(
+			(option) => option.value
+		),
+		["canvas", "svg"]
+	);
+});
+
 test("pending ask scan validates recorded arguments as payload fallback", () => {
 	assert.deepEqual(
 		findPendingAskToolCall(scannerContext([askToolCall("call-1")])),

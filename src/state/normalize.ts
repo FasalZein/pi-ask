@@ -82,6 +82,8 @@ function fillOptionValue(input: unknown, used: Set<string>): unknown {
 	const base =
 		input.label
 			.normalize("NFKD")
+			// Drop the combining marks NFKD splits off, so "Résumé" becomes "resume".
+			.replace(/\p{M}/gu, "")
 			.toLowerCase()
 			.replace(/[^\p{L}\p{N}]+/gu, "-")
 			.replace(/^-|-$/g, "") || "option";
