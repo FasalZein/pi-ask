@@ -258,6 +258,7 @@ Main flow:
 - question options use `▶` for focus; multi-select options use `[ ]` and `[✓]`, and the question shows `Pick any · N of M selected` for predefined options (plus a selected custom answer, if any)
 - question footers show the configured up/down and next-tab navigation, plus fixed `1-9` shortcuts; editor footers do not advertise tab navigation
 - on a short terminal, the header, tabs, question prompt, multi-selection count, and footer stay fixed while option rows and review answers window to the available rows; focused options and review actions stay visible, and indicators count hidden options or review rows
+- the header shows `Question N of M` for questions and `Review` on the review tab; text tabs show ✓ after answered question labels, a filled active tab, and a separate `│ Review n/m` count; narrow tab rows keep the active tab visible and show overflow markers only for hidden tabs
 - pi `tui.select` up/down/confirm bindings also navigate and confirm when they do not conflict with an ask binding; pi select cancel never cancels an ask, and `Ctrl+C` still dismisses
 - `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel`
 - when `Double-press review shortcuts` is enabled, review-tab `1`, `2`, and `3` require the same key twice without a timeout, and the review screen shows an inline hint for the pending action
