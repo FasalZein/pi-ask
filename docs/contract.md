@@ -339,6 +339,7 @@ See [`remote-events.md`](remote-events.md) for payload shapes, examples, and a l
 - submitted or elaborated command-flow results are sent back with user-message semantics
 - replay commands scan only `ctx.sessionManager.getBranch()`, ignore sibling/future branch payloads, and revalidate stored payloads before opening the UI
 - the TUI transcript shows a one-line themed `ask saved` marker with the title or question count for each stored ask, and `pending ask dismissed` for each dismissal; both remain custom session entries and are never added to model context
+- each new stored `ask:payload` entry receives a `/tree` label: `ask: <title>`, or `ask: <first question label or prompt> (<count> question[s])` without a title; whitespace is collapsed, and the label is capped at 60 characters with an ellipsis when truncated. Labels and label changes do not enter model context
 
 ## Interrupted ask resume
 
@@ -348,6 +349,7 @@ See [`remote-events.md`](remote-events.md) for payload shapes, examples, and a l
 - the recovery flow is detached from the session event, so an open form does not block other lifecycle handlers
 - because the interrupted `execute` promise no longer exists, submit sends the result with the same user-message semantics as replay commands
 - submit and cancel both append `ask:pending-dismissed`, which prevents another automatic reopen; `/ask:replay` still works
+- when a recovered ask has a valid stored payload on the active branch, submit changes its `/tree` label to `ask: <detail> (answered)` and cancel changes it to `ask: <detail> (dismissed)`; the 60-character cap preserves the outcome suffix. If recovery uses the original tool arguments because no valid payload exists, there is no stored payload entry to label
 - recovered flows emit remote lifecycle events with source `ask:resume`
 - before each model request, a dismissed recovered `ask_user` call without a real tool result receives one non-error result directly after its assistant message: `This ask_user call was interrupted by a restart. Its outcome, if any, follows in a later user message.` This applies to both submitted and cancelled recovery; calls without a dismissal marker or with a real result are unchanged. The result is added only to the outgoing request, not to the session file.
 

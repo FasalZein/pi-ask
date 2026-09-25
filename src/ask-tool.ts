@@ -70,7 +70,7 @@ export function registerAskTool(
 }
 
 async function executeAskTool(
-	pi: Pick<ExtensionAPI, "appendEntry" | "exec" | "getCommands">,
+	pi: Pick<ExtensionAPI, "appendEntry" | "setLabel" | "exec" | "getCommands">,
 	toolCallId: string,
 	params: AskParams,
 	signal: AbortSignal | undefined,
@@ -89,7 +89,7 @@ async function executeAskTool(
 	if (!validation.ok) {
 		return invalidPayloadResponse(params, validation.issues);
 	}
-	appendAskPayload(pi, {
+	appendAskPayload(pi, ctx, {
 		params,
 		source: "tool",
 		sourceEntryId: toolCallId,

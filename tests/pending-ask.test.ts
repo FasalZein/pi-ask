@@ -88,6 +88,7 @@ function storedPayload(
 	version = 1
 ) {
 	return {
+		id: `payload-${sourceEntryId}`,
 		type: "custom",
 		customType: "ask:payload",
 		data: {
@@ -465,6 +466,9 @@ test("resumed submit persists dismissal, delivers an answer, and emits remote li
 	await delivery;
 
 	assert.deepEqual(harness.dismissedToolCallIds, ["call-1"]);
+	assert.deepEqual(harness.labels, [
+		["payload-call-1", "ask: Choose engine (answered)"],
+	]);
 	assert.equal(delivered.length, 1);
 	assert.match(delivered[0].text, CANVAS_RE);
 	assert.match(delivered[0].text, SKILL_POINTER_RE);
@@ -516,6 +520,9 @@ test("resumed cancel persists dismissal and does not reopen on a second resume",
 	await new Promise<void>((resolve) => setImmediate(resolve));
 
 	assert.deepEqual(harness.dismissedToolCallIds, ["call-1"]);
+	assert.deepEqual(harness.labels, [
+		["payload-call-1", "ask: Choose engine (dismissed)"],
+	]);
 	assert.equal(harness.sentMessages.length, 0);
 	assert.equal(
 		bus.events.filter((event) => event.channel === PI_ASK_STARTED_EVENT).length,
@@ -651,6 +658,7 @@ function createResumeHarness(
 	let sessionTreeHandler: ((event: any, ctx: any) => void) | undefined;
 	const dismissedToolCallIds: string[] = [];
 	const sentMessages: Array<{ text: string; options: unknown }> = [];
+	const labels: [string, string][] = [];
 
 	registerPendingAskResume(
 		{
@@ -667,6 +675,9 @@ function createResumeHarness(
 			appendEntry(customType: string, data: { toolCallId: string }) {
 				branch.push({ type: "custom", customType, data });
 				dismissedToolCallIds.push(data.toolCallId);
+			},
+			setLabel(id: string, label: string) {
+				labels.push([id, label]);
 			},
 			sendUserMessage(text: string, sendOptions: unknown) {
 				sentMessages.push({ text, options: sendOptions });
@@ -717,6 +728,7 @@ function createResumeHarness(
 
 	return {
 		dismissedToolCallIds,
+		labels,
 		sentMessages,
 		start(reason: "startup" | "resume" | "fork") {
 			return sessionStartHandler?.({ type: "session_start", reason }, ctx);
