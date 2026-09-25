@@ -126,8 +126,8 @@ export async function extractAskParams(options: {
 			lastError,
 			lastResponse,
 		});
-		lastResponse = responseText;
-		const parsed = parseExtractionCandidate(responseText);
+		lastResponse = responseText ?? "";
+		const parsed = parseAttemptCandidate(responseText);
 		if (!parsed.ok) {
 			lastError = parsed.error;
 			continue;
@@ -162,7 +162,7 @@ async function runExtractionAttempt(options: {
 	model: Model<Api>;
 	signal?: AbortSignal;
 	timeoutMs: number;
-}): Promise<string> {
+}): Promise<string | undefined> {
 	const controller = new AbortController();
 	let timedOut = false;
 	const timeout = setTimeout(() => {
@@ -187,6 +187,9 @@ async function runExtractionAttempt(options: {
 		if (response.stopReason === "error") {
 			throw new Error(response.errorMessage ?? "Question extraction failed.");
 		}
+		if (response.stopReason === "deferred") {
+			return;
+		}
 		return extractionCandidateFromContent(response.content);
 	} finally {
 		clearTimeout(timeout);
@@ -200,6 +203,15 @@ const CODE_FENCE_PATTERN = /^```(?:[a-zA-Z0-9_-]+)?\s*\n([\s\S]*?)\n```\s*$/;
 type ParsedExtraction =
 	| { ok: true; params: AskParams; issues: string[] }
 	| { ok: false; error: string };
+
+function parseAttemptCandidate(
+	responseText: string | undefined
+): ParsedExtraction {
+	if (responseText === undefined) {
+		return { ok: false, error: "Question extraction was deferred." };
+	}
+	return parseExtractionCandidate(responseText);
+}
 
 export function extractionCandidateFromContent(
 	content: AssistantMessage["content"]
