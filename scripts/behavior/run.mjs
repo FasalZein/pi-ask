@@ -51,6 +51,8 @@ if (
 ) {
 	throw new Error("Invalid arguments. See scripts/behavior/README.md");
 }
+// Declared before the batch loop: records built inside it read this constant.
+const configDoc = /docs\/configuration\.md/;
 await mkdir(outputDir, { recursive: true });
 const batch = `${new Date().toISOString().replace(/[:.]/g, "-")}-${process.pid}`;
 batchRuns: for (const model of models) {
@@ -224,7 +226,6 @@ async function execute({ model, mode, behavior, run, timeoutMs }) {
 	}
 }
 
-const configDoc = /docs\/configuration\.md/;
 function followUpKind(asks, behavior, text) {
 	if (asks.length > 1) {
 		return asks.slice(1).some((c) => c.args?.questions?.length >= 2)

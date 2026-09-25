@@ -38,7 +38,10 @@ export function collectValidationIssues(
 	return collector.issues;
 }
 
-export function prepareAskParams(input: unknown): unknown {
+export function prepareAskParams(
+	input: unknown,
+	fillMissingValues = false
+): unknown {
 	if (!(isRecord(input) && Array.isArray(input.questions))) {
 		return input;
 	}
@@ -48,12 +51,48 @@ export function prepareAskParams(input: unknown): unknown {
 			if (!(isRecord(question) && Array.isArray(question.options))) {
 				return question;
 			}
+			const options = question.options.map(prepareOption);
+			if (!fillMissingValues) {
+				return { ...question, options };
+			}
+			const used = new Set(
+				options
+					.filter(isRecord)
+					.map((option) => option.value)
+					.filter((value): value is string => typeof value === "string")
+					.map((value) => value.trim())
+			);
 			return {
 				...question,
-				options: question.options.map(prepareOption),
+				options: options.map((option) => fillOptionValue(option, used)),
 			};
 		}),
 	};
+}
+
+function fillOptionValue(input: unknown, used: Set<string>): unknown {
+	if (
+		!isRecord(input) ||
+		input.value !== undefined ||
+		typeof input.label !== "string" ||
+		!input.label.trim()
+	) {
+		return input;
+	}
+	const base =
+		input.label
+			.normalize("NFKD")
+			// Drop the combining marks NFKD splits off, so "Résumé" becomes "resume".
+			.replace(/\p{M}/gu, "")
+			.toLowerCase()
+			.replace(/[^\p{L}\p{N}]+/gu, "-")
+			.replace(/^-|-$/g, "") || "option";
+	let value = base;
+	for (let suffix = 2; used.has(value); suffix++) {
+		value = `${base}-${suffix}`;
+	}
+	used.add(value);
+	return { ...input, value };
 }
 
 function prepareOption(input: unknown): unknown {

@@ -1,7 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { UI_DIMENSIONS } from "./constants/ui.ts";
-import { COMPACT_FOLLOW_UP_HINT, promptMode } from "./prompt-text.ts";
 import { renderResultText } from "./result.ts";
 import {
 	resolveSkillReferences,
@@ -105,10 +104,7 @@ export function successfulResponse(
 					summarizeResult(result) +
 					resolvedSkills
 						.map(({ name, path }) => `\nRead skill /skill:${name}: ${path}`)
-						.join("") +
-					(promptMode === "compact" && !result.cancelled
-						? `\n${COMPACT_FOLLOW_UP_HINT}`
-						: ""),
+						.join(""),
 			},
 		],
 		details: resolvedSkills.length ? { ...result, resolvedSkills } : result,

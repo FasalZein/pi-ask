@@ -2,7 +2,7 @@
 
 This file is the source of truth for configuring `@fasalzein/pi-ask`.
 
-The `PI_ASK_PROMPT_MODE` environment variable selects the model-facing tool text at extension load. Use `compact` for the shorter tool description, one rule guideline, and an instructional `recommended` parameter description. Leave it unset, set it to empty, or use `full` for the upstream v1.2.0 text. Unknown values fall back to full mode with one warning. Restart or reload pi to apply a change. This variable is not a key in `pi-ask.json`. Compact-mode follow-up hints and conditional configuration guidance are not wired in this change.
+The `PI_ASK_PROMPT_MODE` environment variable selects the model-facing tool text at extension load. Use `compact` for the shorter tool description, two rule guidelines, instructional `questions`, option `value`, and `recommended` parameter descriptions, up to four questions per ask, and unique label-derived values when an option omits `value`. Full mode still requires explicit option values. Leave it unset, set it to empty, or use `full` for the upstream v1.2.0 text. Unknown values fall back to full mode with one warning. Restart or reload pi to apply a change. This variable is not a key in `pi-ask.json`. Compact mode places follow-up rules in tool text, not in results. It sends conditional configuration guidance when the user mentions pi-ask settings or keys.
 
 When changing pi-ask settings:
 
