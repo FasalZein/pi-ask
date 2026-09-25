@@ -19,6 +19,7 @@ interface Theme {
 
 interface TuiLike {
 	requestRender(): void;
+	terminal: { rows: number };
 }
 
 interface AskSettingsListOptions {
@@ -33,6 +34,7 @@ interface AskSettingsListOptions {
 const DESCRIPTION_LINE_COUNT = 3;
 const COMPACT_WIDTH = 40;
 const RESET_CONFIRMATION_MS = 2000;
+const OVERLAY_HEIGHT_FRACTION = 0.9;
 
 type SettingSection = "Actions" | "Defaults for future asks" | "Live settings";
 type ToggleSettingKey = keyof AskConfig["behaviour"] | "notifications.enabled";
@@ -127,6 +129,7 @@ export class AskSettingsList {
 	private readonly onSave: (config: AskConfig) => Promise<AskConfig>;
 	private readonly theme: Theme;
 	private readonly tui: TuiLike;
+	private windowStart = 0;
 
 	constructor(theme: Theme, options: AskSettingsListOptions) {
 		this.theme = theme;
@@ -186,16 +189,36 @@ export class AskSettingsList {
 		);
 
 		lines.push(this.line("", innerWidth));
-		let previousSection: string | undefined;
+		const focusedLine = this.appendSettings(lines, innerWidth);
+
+		this.appendSelectedDescription(lines, innerWidth);
+		const noticeStart = lines.length;
+		this.appendNotice(lines, innerWidth);
+
+		lines.push(this.line("", innerWidth));
+		const footerStart = lines.length;
+		this.appendFooter(lines, innerWidth);
+		lines.push(this.bottomBorder(innerWidth));
+
+		return this.windowLines(
+			lines,
+			noticeStart,
+			footerStart,
+			focusedLine,
+			innerWidth
+		).map((line) => truncateToWidth(line, width));
+	}
+
+	private appendSettings(lines: string[], innerWidth: number): number {
+		let previousSection: SettingSection | undefined;
+		let focusedLine = 0;
 		for (const [index, setting] of SETTINGS.entries()) {
 			if (setting.section !== previousSection) {
-				if (previousSection) {
-					lines.push(this.line("", innerWidth));
-				}
-				lines.push(
-					this.line(this.theme.fg("accent", ` ${setting.section}`), innerWidth)
-				);
+				this.appendSection(lines, setting.section, previousSection, innerWidth);
 				previousSection = setting.section;
+			}
+			if (index === this.focusIndex) {
+				focusedLine = lines.length;
 			}
 			for (const settingLine of this.renderSetting(
 				setting,
@@ -209,13 +232,61 @@ export class AskSettingsList {
 			}
 		}
 
-		this.appendSelectedDescription(lines, innerWidth);
-		this.appendNotice(lines, innerWidth);
+		return focusedLine;
+	}
 
-		lines.push(this.line("", innerWidth));
-		this.appendFooter(lines, innerWidth);
-		lines.push(this.bottomBorder(innerWidth));
-		return lines.map((line) => truncateToWidth(line, width));
+	private appendSection(
+		lines: string[],
+		section: SettingSection,
+		previousSection: SettingSection | undefined,
+		innerWidth: number
+	): void {
+		if (previousSection) {
+			lines.push(this.line("", innerWidth));
+		}
+		lines.push(this.line(this.theme.fg("accent", ` ${section}`), innerWidth));
+	}
+
+	private windowLines(
+		lines: string[],
+		noticeStart: number,
+		footerStart: number,
+		focusedLine: number,
+		innerWidth: number
+	): string[] {
+		// Pi clips overlays from the top. Window here so focus and close keys survive.
+		const rows = this.tui.terminal.rows;
+		const maxRows = Math.max(
+			1,
+			Math.min(Math.floor(rows * OVERLAY_HEIGHT_FRACTION), rows - 2)
+		);
+		if (lines.length <= maxRows) {
+			this.windowStart = 0;
+			return lines;
+		}
+
+		const body = lines.slice(1, noticeStart);
+		const footer = [
+			...lines.slice(noticeStart, footerStart - 1),
+			...lines.slice(footerStart, -1),
+		];
+		const bodyHeight = Math.max(1, maxRows - footer.length - 2);
+		const focusInBody = focusedLine - 1;
+		this.windowStart = Math.max(
+			0,
+			Math.min(this.windowStart, Math.max(0, body.length - bodyHeight))
+		);
+		if (focusInBody < this.windowStart) {
+			this.windowStart = focusInBody;
+		} else if (focusInBody >= this.windowStart + bodyHeight) {
+			this.windowStart = focusInBody - bodyHeight + 1;
+		}
+		return [
+			lines[0] ?? "",
+			...body.slice(this.windowStart, this.windowStart + bodyHeight),
+			...footer,
+			this.bottomBorder(innerWidth),
+		];
 	}
 
 	invalidate(): void {
