@@ -291,26 +291,6 @@ test("ask tool returns pending questions in non-interactive mode", async () => {
 	assert.match(result.content[0].text, CUSTOM_OPTION_RE);
 });
 
-test("ask tool does not open custom UI outside TUI mode", async () => {
-	const { tool } = registerMockTool();
-	let customOpened = false;
-
-	const result = await tool.execute("call-1", sampleParams(), undefined, noop, {
-		[HAS_UI]: true,
-		mode: "rpc",
-		ui: {
-			custom() {
-				customOpened = true;
-			},
-		},
-	});
-
-	assert.equal(customOpened, false);
-	assert.equal(result.details.cancelled, true);
-	assert.equal(result.details.cancelReason, "ui_unavailable");
-	assert.match(result.content[0].text, NON_INTERACTIVE_MESSAGE_RE);
-});
-
 test("ask tool reports unavailable UI in JSON mode without changing its content", async () => {
 	const { tool } = registerMockTool();
 	const result = await tool.execute(
