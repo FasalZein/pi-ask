@@ -41,6 +41,7 @@ function createList(
 		onClose?: () => void;
 		onSave?: (config: AskConfig) => Promise<AskConfig>;
 		savedConfig?: AskConfig;
+		rows?: number;
 	} = {}
 ) {
 	const onClose =
@@ -55,6 +56,7 @@ function createList(
 		onSave: options.onSave ?? ((config) => Promise.resolve(config)),
 		savedConfig: options.savedConfig ?? savedConfig,
 		tui: {
+			terminal: { rows: options.rows ?? 80 },
 			requestRender() {
 				// no-op in tests
 			},
@@ -242,4 +244,47 @@ test("settings list closes with configured keys and dispose idempotently", () =>
 	list.handleInput("\u0003");
 	list.dispose();
 	assert.equal(closed, 1);
+});
+
+test("settings keeps the close hint and focused setting visible on a short terminal", () => {
+	const list = createList({ rows: 12 });
+	const first = list.render(72);
+	assert(first.length <= 10);
+	assert(first.join("\n").includes("Auto-submit when answered without notes"));
+	assert(first.join("\n").includes("Esc / Ctrl+C / ? to close"));
+	assert(first.at(-1)?.includes("╰"));
+
+	list.handleInput("\x1b[A"); // Wrap to reset, which is below the initial window.
+	const last = list.render(72);
+	assert(last.length <= 10);
+	assert(last.join("\n").includes("[reset all]"));
+	assert(last.join("\n").includes("Esc / Ctrl+C / ? to close"));
+	assert(last.at(-1)?.includes("╰"));
+});
+
+test("settings stays inside a narrow, short viewport", () => {
+	const list = createList({ rows: 16 });
+	list.handleInput("\x1b[A");
+	const lines = list.render(28);
+	assert(lines.length <= 14);
+	assert(lines.every((line) => visibleWidth(line) <= 28));
+	assert(lines.join("\n").includes("reset all"));
+	assert(lines.join("\n").includes("Esc / Ctrl+C / ?"));
+	assert(lines.join("\n").includes("close"));
+});
+
+test("short settings shows a save failure while reverting the focused toggle", async () => {
+	const list = createList({
+		rows: 12,
+		onSave: () => Promise.reject(new Error("disk nope")),
+	});
+	list.handleInput(" ");
+	await new Promise((resolve) => setImmediate(resolve));
+	const lines = list.render(72);
+	const text = lines.join("\n");
+	assert(lines.length <= 10);
+	assert(text.includes("Auto-submit when answered without notes"));
+	assert(text.includes("[off]"));
+	assert(text.includes("disk nope"));
+	assert(text.includes("Esc / Ctrl+C / ? to close"));
 });

@@ -44,6 +44,7 @@ test("registers /ask-settings and opens the shared settings overlay", async () =
 					// test callback intentionally unused
 				};
 				const tui = {
+					terminal: { rows: 80 },
 					requestRender() {
 						// test render hook intentionally unused
 					},
@@ -63,7 +64,7 @@ test("registers /ask-settings and opens the shared settings overlay", async () =
 			margin: 1,
 			maxHeight: "90%",
 			minWidth: 26,
-			width: 72,
+			width: "80%",
 		},
 	});
 	const text = customCalls[0]?.lines.join("\n") ?? "";

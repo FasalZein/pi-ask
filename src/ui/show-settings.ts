@@ -30,7 +30,7 @@ export async function showAskSettings(
 				margin: 1,
 				maxHeight: "90%",
 				minWidth: 26,
-				width: 72,
+				width: "80%",
 			},
 		}
 	);
