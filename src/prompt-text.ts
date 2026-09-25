@@ -51,17 +51,17 @@ export const COMPACT_ELABORATION_INSTRUCTION =
 	"First answer the user's note directly using the question and option context; re-ask only the affected question if a choice is still needed.";
 export const COMPACT_RECOMMENDED_DESCRIPTION =
 	"Optional. Set true on an option you recommend for a grounded reason; state the reason in `description`.";
+const { value: _fullValue, ...compactOptionProperties } =
+	AskOptionSchema.properties;
 const compactOptionSchema = {
 	...AskOptionSchema,
 	required: ["label"],
 	properties: {
-		...AskOptionSchema.properties,
-		value: Type.Optional(
-			Type.String({
-				description:
-					"Optional machine-readable value returned for this option in the result; when omitted, a unique value is derived from the label.",
-			})
-		),
+		...compactOptionProperties,
+		label: Type.String({
+			description:
+				"Required short visible option label shown in the list; a unique machine identifier is derived from this label.",
+		}),
 		recommended: Type.Optional(
 			Type.Boolean({ description: COMPACT_RECOMMENDED_DESCRIPTION })
 		),

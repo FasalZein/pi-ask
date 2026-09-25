@@ -277,7 +277,8 @@ function validateOption(
 ) {
 	const optionNumber = optionIndex + 1;
 	const prefix = `Question ${questionNumber}, option ${optionNumber}`;
-	const optionValue = option.value?.trim();
+	const optionValue =
+		typeof option.value === "string" ? option.value.trim() : undefined;
 	const optionPreview = option.preview?.trim();
 
 	assertRequired(
