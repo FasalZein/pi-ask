@@ -1,3 +1,4 @@
+import "./fixtures/full-prompt-mode.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { successfulResponse } from "../src/ask-tool-helpers.ts";
