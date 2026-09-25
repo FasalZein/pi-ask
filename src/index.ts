@@ -3,6 +3,7 @@ import { registerAnswerCommands } from "./answer-commands.ts";
 import { registerAskSettingsCommand } from "./ask-settings-command.ts";
 import { registerAskTool } from "./ask-tool.ts";
 import { resetAskConfigStore } from "./config/store.ts";
+import { registerAskEntryRenderers } from "./entry-renderers.ts";
 import { PI_ASK_CONFIG_PROMPT } from "./prompt-text.ts";
 import { registerRecoveryContext } from "./recovery-context.ts";
 import { createRemoteAskRuntime } from "./remote-ask.ts";
@@ -22,4 +23,5 @@ export default function askExtension(pi: ExtensionAPI) {
 	registerAnswerCommands(pi, remoteAsk);
 	registerPendingAskResume(pi, remoteAsk);
 	registerRecoveryContext(pi);
+	registerAskEntryRenderers(pi);
 }

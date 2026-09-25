@@ -308,6 +308,7 @@ See [`remote-events.md`](remote-events.md) for payload shapes, examples, and a l
 - command-flow cancellation closes with a notification and does not send a message to the agent
 - submitted or elaborated command-flow results are sent back with user-message semantics
 - replay commands scan only `ctx.sessionManager.getBranch()`, ignore sibling/future branch payloads, and revalidate stored payloads before opening the UI
+- the TUI transcript shows a one-line themed `ask saved` marker with the title or question count for each stored ask, and `pending ask dismissed` for each dismissal; both remain custom session entries and are never added to model context
 
 ## Interrupted ask resume
 
