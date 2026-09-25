@@ -1,9 +1,7 @@
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { AskConfig } from "./config/schema.ts";
 import type { AskQuestion } from "./types.ts";
 
-const execAsync = promisify(exec);
 const DEFAULT_TITLE = "pi ask";
 const EVENT = "question.waiting";
 const MAX_MESSAGE_LENGTH = 120;
@@ -39,21 +37,25 @@ export function createQuestionWaitingNotification(
 
 export async function notifyQuestionWaiting(
 	config: AskConfig,
-	payload: AskNotificationPayload
+	payload: AskNotificationPayload,
+	exec: ExtensionAPI["exec"],
+	signal?: AbortSignal
 ): Promise<NotificationAttempt[]> {
 	if (!config.notifications.enabled) {
 		return [{ channel: "notifications", status: "skipped" }];
 	}
 	const attempts: NotificationAttempt[] = [];
 	for (const channel of config.notifications.channels) {
-		attempts.push(await notifyChannel(channel, payload));
+		attempts.push(await notifyChannel(channel, payload, exec, signal));
 	}
 	return attempts;
 }
 
 async function notifyChannel(
 	channel: AskConfig["notifications"]["channels"][number],
-	payload: AskNotificationPayload
+	payload: AskNotificationPayload,
+	exec: ExtensionAPI["exec"],
+	signal?: AbortSignal
 ): Promise<NotificationAttempt> {
 	const type = typeof channel === "string" ? channel : channel.type;
 	try {
@@ -73,14 +75,25 @@ async function notifyChannel(
 				if (typeof channel === "string") {
 					return { channel: type, status: "failed", error: "Missing command" };
 				}
-				const env = { ...process.env };
-				env.ASK_NOTIFY_EVENT = payload.event;
-				env.ASK_NOTIFY_MESSAGE = payload.message;
-				env.ASK_NOTIFY_TITLE = payload.title;
-				await execAsync(channel.command, {
-					env,
-					timeout: COMMAND_TIMEOUT_MS,
-				});
+				const result = await exec(
+					"env",
+					[
+						`ASK_NOTIFY_EVENT=${payload.event}`,
+						`ASK_NOTIFY_MESSAGE=${payload.message}`,
+						`ASK_NOTIFY_TITLE=${payload.title}`,
+						"sh",
+						"-c",
+						channel.command,
+					],
+					{ timeout: COMMAND_TIMEOUT_MS, signal }
+				);
+				if (result.killed || result.code !== 0) {
+					return {
+						channel: type,
+						status: "failed",
+						error: `Command exited with code ${result.code}`,
+					};
+				}
 				return { channel: type, status: "attempted" };
 			}
 			default:

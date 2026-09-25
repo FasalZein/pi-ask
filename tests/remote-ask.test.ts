@@ -269,7 +269,10 @@ test("remote submit resolves an active ask flow and emits lifecycle events", asy
 				},
 			],
 		},
-		{ remote: { runtime: remoteAsk, source: "tool", toolCallId: "call-1" } }
+		{
+			exec: async () => ({ stdout: "", stderr: "", code: 0, killed: false }),
+			remote: { runtime: remoteAsk, source: "tool", toolCallId: "call-1" },
+		}
 	);
 
 	assert(component);

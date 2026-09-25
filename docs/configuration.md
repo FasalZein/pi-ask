@@ -179,6 +179,7 @@ Notifications are best-effort external alerts emitted once per ask session, when
   - `"osc777"` writes an OSC 777 title/body notification
   - `{ "type": "command", "command": string }` runs a shell command
 - effect: channels run in order; failures are ignored and never fail the ask flow
+- command channels run through Pi with shell syntax (including pipes), a 5-second timeout, and the ask tool abort signal
 - invalid channels are skipped; if none are valid, pi-ask falls back to `["bell"]`
 
 Notification text:
