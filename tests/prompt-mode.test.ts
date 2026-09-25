@@ -75,7 +75,7 @@ const recommendation =
 	"Optional. Set true on an option you recommend for a grounded reason; state the reason in `description`.";
 
 const compact = registeredText("compact");
-const full = registeredText(undefined);
+const full = registeredText("full");
 
 test("prompt mode selects fixed compact text at load and preserves all other schema fields", () => {
 	assert.deepEqual(compact.warnings, []);
@@ -195,12 +195,14 @@ test("compact preparation strips accents from derived values", () => {
 	);
 });
 
-test("unset, empty, and full preserve full text; unknown mode warns once", () => {
-	for (const mode of ["", "full", "not-a-mode"]) {
+test("unset and empty select compact by default; unknown mode warns once and uses compact", () => {
+	assert.notDeepEqual(compact.tools, full.tools);
+	for (const mode of [undefined, "", "not-a-mode"]) {
 		const actual = registeredText(mode);
-		assert.deepEqual(actual.tools, full.tools, mode);
+		assert.deepEqual(actual.tools, compact.tools, String(mode));
 		assert.equal(actual.warnings.length, mode === "not-a-mode" ? 1 : 0);
 	}
+	assert.deepEqual(full.warnings, []);
 });
 
 test("compact rule inventory has a single observed home for each rule", () => {

@@ -6,17 +6,18 @@ import { AskOptionSchema, AskParamsSchema } from "./schema.ts";
 // Mode is fixed when the extension module loads. Tool definitions must not change between turns.
 export type PromptMode = "full" | "compact";
 
+// Compact is the default (ADR 0007); full stays available as the frozen upstream reference.
 function readPromptMode(value: string | undefined): PromptMode {
-	if (value === undefined || value === "" || value === "full") {
-		return "full";
-	}
-	if (value === "compact") {
+	if (value === undefined || value === "" || value === "compact") {
 		return "compact";
 	}
+	if (value === "full") {
+		return "full";
+	}
 	console.warn(
-		`pi-ask: unknown PI_ASK_PROMPT_MODE "${value}"; using full mode`
+		`pi-ask: unknown PI_ASK_PROMPT_MODE "${value}"; using compact mode`
 	);
-	return "full";
+	return "compact";
 }
 
 export const promptMode = readPromptMode(process.env.PI_ASK_PROMPT_MODE);
