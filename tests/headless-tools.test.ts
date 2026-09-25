@@ -9,7 +9,7 @@ const active = ["read", "ask_user", "bash"];
 const handlers = new Map();
 const pi = {
   on(name, handler) { handlers.set(name, [...(handlers.get(name) ?? []), handler]); },
-  registerTool() {}, registerCommand() {}, registerEntryRenderer() {},
+  registerTool() {}, registerCommand() {}, registerEntryRenderer() {}, registerShortcut() {},
   events: { on() {}, emit() {} },
   getActiveTools() { return [...active]; },
   setActiveTools(names) { active.splice(0, active.length, ...names); },
