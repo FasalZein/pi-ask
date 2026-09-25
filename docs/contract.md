@@ -298,7 +298,7 @@ See [`remote-events.md`](remote-events.md) for payload shapes, examples, and a l
 - valid `ask_user` payloads are persisted as branch custom entries before the UI opens, so `/ask:replay` can reopen them after cancel, `/resume`, or `/tree`
 - `/answer` scans the current branch for the latest assistant message; if that message did not finish with `stop`, extraction is refused
 - `/answer` sends the preceding user message as context with the latest assistant text and asks the extractor for one synthetic `ask_user` tool call
-- missing or invalid tool calls are retried according to `answer.extractionRetries`; raw or fenced JSON text remains supported as a last-resort fallback
+- missing or invalid tool calls and deferred model responses are retried according to `answer.extractionRetries`; deferred content is ignored, and raw or fenced JSON text remains supported as a last-resort fallback
 - `{ "questions": [] }` from extraction means no questions were found and is not treated as an invalid ask payload
 - command-flow cancellation closes with a notification and does not send a message to the agent
 - submitted or elaborated command-flow results are sent back with user-message semantics

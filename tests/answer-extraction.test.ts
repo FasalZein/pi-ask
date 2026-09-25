@@ -3,6 +3,7 @@ import test from "node:test";
 import {
 	collectExtractionBusinessIssues,
 	createExtractionContext,
+	extractAskParams,
 	extractionCandidateFromContent,
 	parseExtractionCandidate,
 	repairExtractionParams,
@@ -12,6 +13,79 @@ import {
 function model(provider: string, id: string) {
 	return { provider, id } as never;
 }
+
+const validExtraction = {
+	questions: [
+		{
+			id: "direction",
+			prompt: "Which direction?",
+			options: [
+				{ value: "a", label: "A" },
+				{ value: "b", label: "B" },
+			],
+		},
+	],
+};
+
+function extractionResponse(stopReason: "deferred" | "toolUse") {
+	return {
+		stopReason,
+		content: [
+			{
+				type: "toolCall",
+				id: "call-1",
+				name: "ask_user",
+				arguments: validExtraction,
+			},
+		],
+	} as never;
+}
+
+test("deferred extraction is retried before accepting a valid tool call", async () => {
+	let calls = 0;
+	const retries: number[] = [];
+	const params = await extractAskParams({
+		assistantText: "Which direction: A or B?",
+		model: model("fake", "extractor"),
+		complete: () => {
+			calls++;
+			return Promise.resolve(
+				extractionResponse(calls === 1 ? "deferred" : "toolUse")
+			);
+		},
+		retries: 1,
+		timeoutMs: 1000,
+		onRetry: (attempt) => retries.push(attempt),
+	});
+
+	assert.deepEqual(params, validExtraction);
+	assert.equal(calls, 2);
+	assert.deepEqual(retries, [1]);
+});
+
+test("repeated deferred extraction reaches the existing failure path", async () => {
+	let calls = 0;
+	const retries: number[] = [];
+	await assert.rejects(
+		extractAskParams({
+			assistantText: "Which direction: A or B?",
+			model: model("fake", "extractor"),
+			complete: () => {
+				calls++;
+				return Promise.resolve(extractionResponse("deferred"));
+			},
+			retries: 2,
+			timeoutMs: 1000,
+			onRetry: (attempt) => retries.push(attempt),
+		}),
+		{
+			message:
+				"Question extraction did not return a valid ask_user tool call or JSON fallback after retries.",
+		}
+	);
+	assert.equal(calls, 3);
+	assert.deepEqual(retries, [1, 2]);
+});
 
 test("selectExtractionModel uses first configured model with auth", async () => {
 	const first = model("missing", "a");
