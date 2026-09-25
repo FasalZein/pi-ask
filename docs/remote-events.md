@@ -18,7 +18,7 @@ Remote submit:
 
 ## Started
 
-Emitted after a validated ask UI flow opens.
+Emitted after a validated ask flow opens in TUI or RPC mode. Print and JSON modes do not open a flow or emit lifecycle events.
 
 ```ts
 type PiAskStartedEvent = {
@@ -67,7 +67,7 @@ Rules:
 - `values` must match option `value`s from the started event
 - keys in `answers` must match question ids
 - labels and indices are recomputed by pi-ask
-- a remote `answer` replaces the current answer set; stale UI answers are not merged
+- a remote `answer` replaces the current answer set; stale UI answers are not merged. In RPC mode, a valid bridge submission closes the pending pi dialog and wins over dialog input
 - `mode` defaults to `"submit"`; use `"elaborate"` to complete as an elaboration request
 
 ## Cancel
@@ -116,6 +116,8 @@ type PiAskCompletedEvent = {
   completedAt: number;
 };
 ```
+
+RPC asks also use pi select and input dialogs. These dialogs provide single-select, preview text, multi-select through repeated checkbox-prefixed selects, custom answers, and Submit/Cancel. They do not offer notes or Elaborate. A dismissed dialog cancels as `user`; an aborted run cancels as `aborted`. A bridge may still submit notes or Elaborate through these events.
 
 ## Minimal bridge
 

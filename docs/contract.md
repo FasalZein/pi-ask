@@ -283,7 +283,7 @@ In compact mode, pi-ask leaves the system prompt unchanged. When the expanded us
 
 ## Non-TUI and non-interactive modes
 
-The rich ask flow uses `ctx.ui.custom()` and opens only in TUI mode. In print, JSON, RPC, or any other non-TUI mode, the tool returns a `Needs user input: ask_user requires interactive TUI mode.` message in `content` and a cancelled result with `cancelReason: "ui_unavailable"` in `details` instead of opening custom UI.
+The rich ask flow uses `ctx.ui.custom()` only in TUI mode. In RPC mode with a UI, pi-ask uses pi dialogs: single and preview options show labels and preview text before selection, multi options use repeated checkbox-prefixed selects with Done, and custom answers use input. The last select offers Submit or Cancel. Dismissing any dialog cancels as `user`; aborting cancels as `aborted`. RPC does not offer notes or Elaborate. Every dialog receives an abort signal. Print, JSON, and contexts without an interactive UI keep the existing `Needs user input: ask_user requires interactive TUI mode.` content and `cancelReason: "ui_unavailable"` details.
 
 The public tool schema requires question `id` and `prompt` plus option `value` and `label`, and it restricts question `type` to `single`, `multi`, or `preview`, so malformed structural fields fail before execution. The tool still validates trimmed text, uniqueness, option counts, and preview requirements during execution and returns structured issues for those failures. Result rendering falls back to Pi's raw tool-error text when schema validation prevents execution.
 
@@ -295,7 +295,7 @@ When enabled, pi-ask emits one best-effort external notification per ask session
 
 ## Remote inter-extension events
 
-pi-ask exposes a local `pi.events` contract for trusted Pi extensions. It does not expose a network API and does not automate terminal keystrokes. RPC or headless integrations should use a trusted in-process bridge extension that consumes these events rather than expecting the TUI-only custom surface to open.
+pi-ask exposes a local `pi.events` contract for trusted Pi extensions. It does not expose a network API and does not automate terminal keystrokes. RPC opens pi dialogs and also emits lifecycle events. A trusted in-process bridge can submit while an RPC dialog is open; its valid submission wins and closes the dialog. Headless integrations cannot open dialogs and need their own user interaction.
 
 Channels:
 

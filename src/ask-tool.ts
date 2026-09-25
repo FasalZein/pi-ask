@@ -23,6 +23,7 @@ import {
 	promptMode,
 } from "./prompt-text.ts";
 import type { RemoteAskRuntime } from "./remote-ask.ts";
+import { runRpcAskFlow } from "./rpc-ask.ts";
 import { AskParamsSchema } from "./schema.ts";
 import { prepareAskParams } from "./state/normalize.ts";
 import type { AskParams } from "./types.ts";
@@ -90,20 +91,29 @@ async function executeAskTool(
 		source: "tool",
 		sourceEntryId: toolCallId,
 	});
-	if (ctx.mode !== "tui") {
+	if (ctx.mode !== "tui" && !(ctx.mode === "rpc" && ctx.hasUI)) {
 		return nonInteractiveResponse(validation.state);
 	}
 	ctx.ui.setWorkingVisible(false);
 	try {
-		const result = await runAskFlow(ctx, params, {
-			shutdownSignal,
-			exec: pi.exec,
-			getCommands: () => pi.getCommands(),
-			signal,
-			remote: remoteAsk
-				? { runtime: remoteAsk, source: "tool", toolCallId }
-				: undefined,
-		});
+		const result =
+			ctx.mode === "rpc"
+				? await runRpcAskFlow(ctx, params, {
+						presentSingleAsMulti: config.behaviour.presentSingleAsMulti,
+						remote: remoteAsk,
+						signal,
+						shutdownSignal,
+						toolCallId,
+					})
+				: await runAskFlow(ctx, params, {
+						shutdownSignal,
+						exec: pi.exec,
+						getCommands: () => pi.getCommands(),
+						signal,
+						remote: remoteAsk
+							? { runtime: remoteAsk, source: "tool", toolCallId }
+							: undefined,
+					});
 		return result.cancelReason === "aborted"
 			? abortedResponse(params)
 			: successfulResponse(result, pi.getCommands());
