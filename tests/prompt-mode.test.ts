@@ -2,14 +2,12 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { Value } from "typebox/value";
-import {
-	COMPACT_FOLLOW_UP_HINT,
-	PI_ASK_CONFIG_PROMPT,
-} from "../src/prompt-text.ts";
+import { PI_ASK_CONFIG_PROMPT } from "../src/prompt-text.ts";
 
 // Each process loads the extension once, just as pi does. A mode change after load must not redefine the tool.
 const probe = `
 import askExtension from "./src/index.ts";
+import { successfulResponse } from "./src/ask-tool-helpers.ts";
 const tools = [];
 const pi = {
   on() {}, registerCommand() {}, registerEntryRenderer() {},
@@ -19,7 +17,8 @@ const pi = {
 askExtension(pi);
 process.env.PI_ASK_PROMPT_MODE = "compact";
 askExtension(pi);
-console.log(JSON.stringify(tools.map(({ description, promptSnippet, promptGuidelines, parameters }) => ({ description, promptSnippet, promptGuidelines, parameters }))));
+const submitted = { cancelled: false, mode: "submit", questions: [], answers: {} };
+console.log(JSON.stringify({ tools: tools.map(({ description, promptSnippet, promptGuidelines, parameters }) => ({ description, promptSnippet, promptGuidelines, parameters })), result: successfulResponse(submitted).content[0].text }));
 `;
 
 function registeredText(mode: string | undefined) {
@@ -40,7 +39,7 @@ function registeredText(mode: string | undefined) {
 	);
 	assert.equal(result.status, 0, result.stderr);
 	return {
-		tools: JSON.parse(result.stdout),
+		...JSON.parse(result.stdout),
 		warnings: result.stderr.trim() ? result.stderr.trim().split("\n") : [],
 	};
 }
@@ -123,12 +122,12 @@ test("compact rule inventory has a single observed home for each rule", () => {
 	collect(tool.parameters, "parameters");
 	const homes: Record<string, string> = {
 		guideline: tool.promptGuidelines[0],
-		followUp: COMPACT_FOLLOW_UP_HINT,
+		followUp: compact.result,
 		config: PI_ASK_CONFIG_PROMPT,
 		...descriptions,
 	};
-	// Inventory from the compact-mode rule allocation in spec #1. The result/config
-	// homes are prepared here; #16 and #17 wire them into their runtime paths.
+	// Inventory from the compact-mode rule allocation in spec #1.
+	// The result home is observed through a submitted response; the config home is its trigger text.
 	const rules: [string, string, string][] = [
 		["G1", "guideline", "before preference-sensitive decisions"],
 		["G2", "guideline", "1-3 concise questions"],

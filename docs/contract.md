@@ -6,7 +6,7 @@ This document defines the stable external behavior. It does not explain internal
 
 ## Prompt mode
 
-The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, empty, and `full` keep the upstream v1.2.0 description, guidelines, and parameter schema. `compact` uses a shorter description, one guideline, and an instructional `recommended` description; all other parameter descriptions and the tool snippet remain unchanged. Unknown values use full mode and log one warning. The tool definition does not change between turns. Follow-up hints and conditional configuration guidance are not active in compact mode yet.
+The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, empty, and `full` keep the upstream v1.2.0 description, guidelines, and parameter schema. `compact` uses a shorter description, one guideline, and an instructional `recommended` description; all other parameter descriptions and the tool snippet remain unchanged. Unknown values use full mode and log one warning. The tool definition does not change between turns. Compact mode appends a follow-up hint to submitted and elaborated tool-result text, including recovery and command-flow deliveries. It does not append the hint to cancelled, invalid, UI-unavailable, or aborted results. The hint does not change transcript rendering. Conditional configuration guidance is active in compact mode.
 
 ## Input
 
@@ -176,6 +176,7 @@ The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, e
 - semantically invalid payloads that reach tool execution return `error.kind === "invalid_input"` with structured `issues` and a transcript-friendly `Invalid ask_user payload:` message; their rendered status is `Invalid tool payload`
 - payloads missing schema-required fields fail Pi's schema validation before tool execution and use Pi's standard tool-error result without structured `details`
 - `mode: "submit"` is normal completion; `mode: "elaborate"` means the user asked the agent to continue with follow-up clarification based on notes
+- in compact prompt mode, submitted and elaborated model-facing `content` ends with a new line: `Follow-up: if a choice is still needed, ask with another \`ask_user\` call, not plain-text choices in chat. When these answers narrow the branch, bundle the next 2-3 related decisions into one call; ask one at a time only when the next question depends on the previous answer.`
 - unanswered questions without notes are omitted from `answers`; note-only entries remain in `answers` to carry their notes, but all non-cancelled submitted result text includes `<label>: (no answer)` in summary mode and `? <label>: (no answer)` in transcript rendering
 - in `mode: "elaborate"`, `answers` contains only committed answers; note-only entries move to `elaboration.items`
 - `continuation.strategy === "refine_only"` means the next ask should refine the current flow rather than restart it
