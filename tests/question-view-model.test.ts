@@ -71,7 +71,7 @@ test("question view model marks multi custom answer as checked", () => {
 	state = submitCustomAnswer(state, "Other answer");
 
 	const model = buildQuestionScreenModel(buildContext(state));
-	assert.equal(model.rows[1]?.prefix, "[x] ");
+	assert.equal(model.rows[1]?.prefix, "[✓] ");
 	assert.equal(model.rows[1]?.color, "success");
 	assert.equal(model.rows[1]?.detail?.kind, "custom-text");
 });

@@ -83,6 +83,16 @@ export function renderAskScreen(args: {
 			trackRow,
 			starts
 		);
+		if (args.viewport && starts.length > 0) {
+			// Keep the prompt and multi-selection count visible while options page.
+			const introRows = starts[0];
+			header.push(...body.splice(0, introRows));
+			for (let index = 0; index < starts.length; index++) {
+				starts[index] -= introRows;
+			}
+			focusStart -= introRows;
+			focusEnd -= introRows;
+		}
 	}
 
 	return windowAskBody({

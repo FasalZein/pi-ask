@@ -182,8 +182,6 @@ const footerHint = (
 	label = binding.label
 ) => `${label} ${action}`;
 
-const footerKeyIdLabel = (binding: AskKeyBinding) => binding.keys.join(" / ");
-
 export function formatKeybindingLabel(key: string): string {
 	if (key === "up") {
 		return "↑";
@@ -320,6 +318,12 @@ export function renderFooterKeymaps(
 	const noteEditor = getAskContextBindings(config, "noteEditor");
 	const bindings = getAskKeyBindings(config);
 	const noteNavigationLabel = `${main.optionNote.label}/${main.questionNote.label}`;
+	const moveLabel = `${main.previousOption.label}${main.nextOption.label}`;
+	const questionHint = footerHint(
+		main.nextTab,
+		"question",
+		formatKeybindingLabel(config.keymaps.main.nextTab[0] ?? "tab")
+	);
 	const hintsByContext: Record<FooterKeymapContext, readonly string[]> = {
 		input: [
 			footerHint(editor.submit, "submit"),
@@ -338,25 +342,22 @@ export function renderFooterKeymaps(
 			footerHint(global.settings, "settings"),
 		],
 		multi: [
-			footerHint(main.toggle, "toggle"),
-			footerHint(
-				main.changeQuestionType,
-				"question type",
-				footerKeyIdLabel(main.changeQuestionType)
-			),
+			`${moveLabel} move`,
+			`${main.toggle.label}/1-9 toggle`,
+			questionHint,
 			footerHint(main.confirm, "continue"),
 			footerHint(main.optionNote, "note", noteNavigationLabel),
+			footerHint(main.changeQuestionType, "type"),
 			footerHint(main.cancel, "dismiss"),
 			footerHint(global.settings, "settings"),
 		],
 		default: [
-			footerHint(
-				main.changeQuestionType,
-				"question type",
-				footerKeyIdLabel(main.changeQuestionType)
-			),
+			`${moveLabel} move`,
+			"1-9 pick",
+			questionHint,
 			footerHint(main.confirm, "confirm"),
 			footerHint(main.optionNote, "note", noteNavigationLabel),
+			footerHint(main.changeQuestionType, "type"),
 			footerHint(main.cancel, "dismiss"),
 			footerHint(global.settings, "settings"),
 		],

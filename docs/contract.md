@@ -41,7 +41,7 @@ The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, e
 - question `label` falls back to `Q1`, `Q2`, ...
 - option `label` is required in the public schema; before schema validation, a missing or blank string label is derived from a non-empty `value` by replacing hyphens and underscores with spaces and capitalizing the first character
 - `recommended` is optional presentation metadata; zero, one, or multiple options may set it to `true`
-- recommended options render warning-colored `(recommended)` followed by muted ` | <description>`, or only `(recommended)` when no description exists, but are not preselected
+- recommended options show `(recommended)` after the option label on the same row; the description, when present, stays on the next row; recommendations never preselect an answer
 - `type` defaults to `single`
 - `required` defaults to `false`
 - `required` is metadata only; it never blocks submission
@@ -251,7 +251,9 @@ Main flow:
 - `main.confirm`, `main.cancel`, and `main.toggle` confirm, cancel, or toggle; defaults: `Enter`, `Esc`, `Space`
 - `main.changeQuestionType` changes the active question type (non-preview: `single <-> multi`; preview: `preview <-> multi`); default: `t`; destructive `multi -> single` changes require pressing the type hotkey again, with no timeout, and the pending confirmation clears on other navigation/actions
 - `main.optionNote` and `main.questionNote` open option/question notes; defaults: `n`, `Shift+N`
-- on a short terminal, the header, tabs, and footer stay fixed while question bodies and review answers window to the available rows; focused options and review actions stay visible, and indicators count hidden options or review rows
+- question options use `▶` for focus; multi-select options use `[ ]` and `[✓]`, and the question shows `Pick any · N of M selected` for predefined options (plus a selected custom answer, if any)
+- question footers show the configured up/down and next-tab navigation, plus fixed `1-9` shortcuts; editor footers do not advertise tab navigation
+- on a short terminal, the header, tabs, question prompt, multi-selection count, and footer stay fixed while option rows and review answers window to the available rows; focused options and review actions stay visible, and indicators count hidden options or review rows
 - pi `tui.select` up/down/confirm bindings also navigate and confirm when they do not conflict with an ask binding; pi select cancel never cancels an ask, and `Ctrl+C` still dismisses
 - `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel`
 - when `Double-press review shortcuts` is enabled, review-tab `1`, `2`, and `3` require the same key twice without a timeout, and the review screen shows an inline hint for the pending action
