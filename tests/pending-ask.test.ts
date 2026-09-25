@@ -243,8 +243,9 @@ test("pending dismissal does not hide the payload from manual replay", () => {
 	assert.equal(lookup.data?.params, params);
 });
 
-test("pending ask resume scans only startup, resume, and fork TUI events", () => {
+test("pending ask recovery scans startup, resume, fork, and tree only in TUI", () => {
 	let sessionStartHandler: ((event: any, ctx: any) => void) | undefined;
+	let sessionTreeHandler: ((event: any, ctx: any) => void) | undefined;
 	const remoteAsk = createRemoteAskRuntime(new TestEventBus() as never);
 	registerPendingAskResume(
 		{
@@ -254,12 +255,15 @@ test("pending ask resume scans only startup, resume, and fork TUI events", () =>
 			on(event: string, handler: (event: any, ctx: any) => void) {
 				if (event === "session_start") {
 					sessionStartHandler = handler;
+				} else if (event === "session_tree") {
+					sessionTreeHandler = handler;
 				}
 			},
 		} as never,
 		remoteAsk
 	);
 	assert(sessionStartHandler);
+	assert(sessionTreeHandler);
 
 	const branchReads: string[] = [];
 	for (const reason of ["startup", "resume", "fork", "new", "reload"]) {
@@ -290,8 +294,63 @@ test("pending ask resume scans only startup, resume, and fork TUI events", () =>
 		}
 	);
 
-	assert.deepEqual(branchReads, ["startup", "resume", "fork"]);
+	for (const mode of ["tui", "rpc"]) {
+		sessionTreeHandler(
+			{ type: "session_tree" },
+			{
+				mode,
+				sessionManager: {
+					getBranch() {
+						branchReads.push(`tree:${mode}`);
+						return [];
+					},
+				},
+			}
+		);
+	}
+
+	assert.deepEqual(branchReads, ["startup", "resume", "fork", "tree:tui"]);
 	remoteAsk.disposeAll();
+});
+
+test("tree navigation reopens a pending ask only on the new branch and only once while open", {
+	timeout: 2000,
+}, async () => {
+	getAskConfigStore().setConfig(disabledNotificationConfig());
+	const bus = new TestEventBus();
+	const remoteAsk = createRemoteAskRuntime(bus as never);
+	const harness = createResumeHarness([], remoteAsk);
+	const pendingBranch = [askToolCall("tree-call"), storedPayload("tree-call")];
+
+	harness.tree([]);
+	await new Promise<void>((resolve) => setImmediate(resolve));
+	assert.equal(
+		bus.events.filter((event) => event.channel === PI_ASK_STARTED_EVENT).length,
+		0
+	);
+
+	harness.tree(pendingBranch);
+	await new Promise<void>((resolve) => setImmediate(resolve));
+	const started = findEvent<RemoteAskStartedEvent>(bus, PI_ASK_STARTED_EVENT);
+	assert.equal(started.toolCallId, "tree-call");
+	harness.tree(pendingBranch);
+	harness.start("resume");
+	await new Promise<void>((resolve) => setImmediate(resolve));
+	assert.equal(
+		bus.events.filter((event) => event.channel === PI_ASK_STARTED_EVENT).length,
+		1
+	);
+
+	bus.emit(PI_ASK_SUBMIT_EVENT, {
+		version: 1,
+		requestId: "tree-cancel",
+		flowId: started.flowId,
+		response: { kind: "cancel" },
+	});
+	await new Promise<void>((resolve) => setImmediate(resolve));
+	assert.deepEqual(harness.dismissedToolCallIds, ["tree-call"]);
+	remoteAsk.disposeAll();
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
 });
 
 test("resumed submit persists dismissal, delivers an answer, and emits remote lifecycle events", {
@@ -425,6 +484,7 @@ function createResumeHarness(
 	} = {}
 ) {
 	let sessionStartHandler: ((event: any, ctx: any) => void) | undefined;
+	let sessionTreeHandler: ((event: any, ctx: any) => void) | undefined;
 	const dismissedToolCallIds: string[] = [];
 	const sentMessages: Array<{ text: string; options: unknown }> = [];
 
@@ -436,6 +496,8 @@ function createResumeHarness(
 			on(event: string, handler: (event: any, ctx: any) => void) {
 				if (event === "session_start") {
 					sessionStartHandler = handler;
+				} else if (event === "session_tree") {
+					sessionTreeHandler = handler;
 				}
 			},
 			appendEntry(customType: string, data: { toolCallId: string }) {
@@ -450,6 +512,7 @@ function createResumeHarness(
 		remoteAsk
 	);
 	assert(sessionStartHandler);
+	assert(sessionTreeHandler);
 
 	const ctx = {
 		cwd: process.cwd(),
@@ -487,6 +550,10 @@ function createResumeHarness(
 		sentMessages,
 		start(reason: "startup" | "resume" | "fork") {
 			return sessionStartHandler?.({ type: "session_start", reason }, ctx);
+		},
+		tree(nextBranch: unknown[]) {
+			branch.splice(0, branch.length, ...nextBranch);
+			return sessionTreeHandler?.({ type: "session_tree" }, ctx);
 		},
 	};
 }
