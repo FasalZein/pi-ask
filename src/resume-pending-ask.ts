@@ -3,6 +3,7 @@ import type {
 	ExtensionContext,
 	SessionStartEvent,
 } from "@earendil-works/pi-coding-agent";
+import { askTreeLabel, findAskPayloadEntryId } from "./ask-payload-store.ts";
 import { successfulResponse } from "./ask-tool-helpers.ts";
 import {
 	appendPendingAskDismissal,
@@ -65,13 +66,14 @@ export function registerPendingAskResume(
 async function reopenPendingAsk(
 	pi: Pick<
 		ExtensionAPI,
-		"appendEntry" | "sendUserMessage" | "exec" | "getCommands"
+		"appendEntry" | "setLabel" | "sendUserMessage" | "exec" | "getCommands"
 	>,
 	ctx: ExtensionContext,
 	pendingAsk: PendingAskToolCall,
 	remoteAsk: RemoteAskRuntime,
 	shutdownSignal?: AbortSignal
 ): Promise<void> {
+	const payloadId = findAskPayloadEntryId(ctx, pendingAsk.toolCallId);
 	ctx.ui.notify(
 		`Reopening unanswered ask_user form: ${pendingAsk.params.questions.length} question(s).`,
 		"info"
@@ -96,6 +98,15 @@ async function reopenPendingAsk(
 
 	if (shutdownSignal?.aborted) {
 		return;
+	}
+	if (payloadId) {
+		pi.setLabel(
+			payloadId,
+			askTreeLabel(
+				pendingAsk.params,
+				result.cancelled ? "dismissed" : "answered"
+			)
+		);
 	}
 	appendPendingAskDismissal(pi, pendingAsk.toolCallId);
 	if (result.cancelled) {

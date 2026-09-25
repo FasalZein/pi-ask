@@ -117,7 +117,7 @@ async function runAnswerCommand(
 		return;
 	}
 
-	appendAskPayload(pi, {
+	appendAskPayload(pi, ctx, {
 		params,
 		source: "answer-extraction",
 		sourceEntryId: assistant.entryId,

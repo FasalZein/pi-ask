@@ -20,15 +20,54 @@ export interface AskPayloadEntryData {
 	version: typeof ASK_PAYLOAD_ENTRY_VERSION;
 }
 
+const MAX_TREE_LABEL_LENGTH = 60;
+
+export function askTreeLabel(
+	params: AskParams,
+	outcome?: "answered" | "dismissed"
+): string {
+	const title = params.title?.replace(/\s+/g, " ").trim();
+	const first = params.questions[0];
+	const question = (first?.label || first?.prompt || "ask")
+		.replace(/\s+/g, " ")
+		.trim();
+	const count = params.questions.length;
+	const detail =
+		title || `${question} (${count} question${count === 1 ? "" : "s"})`;
+	const suffix = outcome ? ` (${outcome})` : "";
+	const prefix = "ask: ";
+	const available = MAX_TREE_LABEL_LENGTH - prefix.length - suffix.length;
+	const chars = Array.from(detail);
+	const shortened =
+		chars.length > available
+			? `${chars
+					.slice(0, available - 1)
+					.join("")
+					.trimEnd()}…`
+			: detail;
+	return `${prefix}${shortened}${suffix}`;
+}
+
 export function appendAskPayload(
-	pi: Pick<ExtensionAPI, "appendEntry">,
+	pi: Pick<ExtensionAPI, "appendEntry" | "setLabel">,
+	ctx: Pick<ExtensionContext, "sessionManager">,
 	data: Omit<AskPayloadEntryData, "timestamp" | "version">
 ): void {
-	pi.appendEntry(ASK_PAYLOAD_ENTRY_TYPE, {
+	const payload = {
 		version: ASK_PAYLOAD_ENTRY_VERSION,
 		timestamp: Date.now(),
 		...data,
-	});
+	};
+	pi.appendEntry(ASK_PAYLOAD_ENTRY_TYPE, payload);
+	// appendEntry returns void in both supported Pi versions; the append is synchronous.
+	const entry = ctx.sessionManager?.getBranch().at(-1);
+	if (
+		entry?.type === "custom" &&
+		entry.customType === ASK_PAYLOAD_ENTRY_TYPE &&
+		entry.data === payload
+	) {
+		pi.setLabel(entry.id, askTreeLabel(data.params));
+	}
 }
 
 export function findLatestPayloadInCurrentBranch(
@@ -105,4 +144,23 @@ function isValidAskPayloadData(data: unknown): data is AskPayloadEntryData {
 		return false;
 	}
 	return true;
+}
+
+export function findAskPayloadEntryId(
+	ctx: Pick<ExtensionContext, "sessionManager">,
+	sourceEntryId: string
+): string | undefined {
+	for (const entry of [...ctx.sessionManager.getBranch()].reverse()) {
+		if (
+			isAskPayloadEntry(entry) &&
+			entry.data?.source === "tool" &&
+			entry.data.sourceEntryId === sourceEntryId &&
+			isValidAskPayloadData(entry.data)
+		) {
+			return "id" in entry && typeof entry.id === "string"
+				? entry.id
+				: undefined;
+		}
+	}
+	return;
 }
