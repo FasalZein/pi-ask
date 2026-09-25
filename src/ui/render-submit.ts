@@ -1,13 +1,23 @@
-import { truncateToWidth } from "@earendil-works/pi-tui";
-import { UI_TEXT } from "../constants/ui.ts";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { wrapText } from "../text.ts";
 import type { AskState } from "../types.ts";
-import {
-	mergeColumns,
-	pushSavedNote,
-	pushWrappedText,
-} from "./render-helpers.ts";
+import { pushSavedNote, pushWrappedText } from "./render-helpers.ts";
 import type { Theme } from "./render-types.ts";
-import { buildReviewScreenModel } from "./view-models/review.ts";
+import {
+	buildReviewScreenModel,
+	type ReviewQuestionModel,
+} from "./view-models/review.ts";
+
+interface ReviewWindow {
+	reviewPageRows: number;
+	reviewScrollTop: number;
+}
+type RowCallback = (index: number, start: number, end: number) => void;
+interface ReviewLines {
+	ends: number[];
+	lines: string[];
+	starts: number[];
+}
 
 export function renderSubmitScreen(
 	lines: string[],
@@ -15,157 +25,181 @@ export function renderSubmitScreen(
 	theme: Theme,
 	width: number,
 	reviewShortcutHint?: string,
-	onActionRow?: (index: number, start: number, end: number) => void,
-	onReviewRow?: (index: number, start: number, end: number) => void,
-	reviewWindow?: { reviewScrollTop: number; reviewPageRows: number },
+	onActionRow?: RowCallback,
+	onReviewRow?: RowCallback,
+	reviewWindow?: ReviewWindow,
 	availableRows = 24,
-	pageKeys = { up: "Shift+↑", down: "Shift+↓" }
+	pageKeys = { up: "Shift+↑", down: "Shift+↓" },
+	focusedRow?: number
 ) {
-	const reviewStarts: number[] = [];
-	const trackReview = (index: number, start: number, end: number) => {
-		reviewStarts[index] = start;
-		onReviewRow?.(index, start, end);
-	};
-	const height = Math.max(1, availableRows - (reviewShortcutHint ? 2 : 0));
-	const model = buildReviewScreenModel(state, width);
-	if (model.layout === "wide") {
-		const rightWidth = Math.max(1, width - model.actionColumnWidth - 2);
-		const reviewLines = renderSubmitReviewLines(
-			model,
-			theme,
-			rightWidth,
-			trackReview
-		);
-		const actionLines = renderSubmitActions(
-			model,
-			theme,
-			model.actionColumnWidth,
-			onActionRow
-		);
-		const visibleReview = windowReviewLines(
-			reviewLines,
-			reviewStarts,
-			reviewWindow,
-			height,
-			actionLines.length,
-			true,
-			theme,
-			pageKeys
-		);
-		for (const line of mergeColumns(
-			actionLines,
-			visibleReview,
-			model.actionColumnWidth,
-			width
-		)) {
-			lines.push(line);
-		}
-		appendReviewShortcutHint(lines, reviewShortcutHint, theme, width);
-		return;
-	}
-
-	const reviewLines = renderSubmitReviewLines(model, theme, width, trackReview);
-	let reviewLength = reviewLines.length;
-	const actionLines = renderSubmitActions(
-		model,
+	const model = buildReviewScreenModel(state);
+	const answered = model.questions.filter(
+		(question) => !question.unanswered
+	).length;
+	lines.push(
+		theme.fg(
+			"accent",
+			` Review · ${answered} of ${model.questions.length} answered`
+		)
+	);
+	lines.push("");
+	const review = renderReviewRows(model.questions, theme, width, focusedRow);
+	const actionLines: string[] = [];
+	const actionRows: Array<{ start: number; end: number }> = [];
+	renderReviewActions(
+		actionLines,
+		model.actions,
 		theme,
 		width,
-		(index, start, end) =>
-			onActionRow?.(index, reviewLength + 1 + start, reviewLength + 1 + end)
+		focusedRow,
+		(index, start, end) => {
+			actionRows[index] = { start, end };
+		}
 	);
-	const visibleReview = windowReviewLines(
-		reviewLines,
-		reviewStarts,
-		reviewWindow,
-		height,
-		actionLines.length + 1,
-		false,
+	const hintLines: string[] = [];
+	appendReviewHint(hintLines, reviewShortcutHint, theme, width);
+	let room =
+		availableRows - lines.length - actionLines.length - hintLines.length;
+	if (room <= 3 && hintLines[0] === "") {
+		hintLines.shift();
+		room++;
+	}
+	if (room <= 3) {
+		lines.pop();
+		room++;
+	}
+	const separator = room > 3;
+	const windowed = windowReviewRows(
+		review,
 		theme,
-		pageKeys
+		reviewWindow,
+		room - (separator ? 1 : 0),
+		pageKeys,
+		focusedRow
 	);
-	reviewLength = visibleReview.length;
-	lines.push(...visibleReview);
-	lines.push("");
-	lines.push(...actionLines);
-	appendReviewShortcutHint(lines, reviewShortcutHint, theme, width);
+	reportVisibleRows(review, windowed, lines.length, onReviewRow);
+	lines.push(...windowed.lines);
+	if (separator) {
+		lines.push("");
+	}
+	const actionOffset = lines.length;
+	lines.push(...actionLines, ...hintLines);
+	for (const [index, row] of actionRows.entries()) {
+		onActionRow?.(index, actionOffset + row.start, actionOffset + row.end);
+	}
 }
 
-function windowReviewLines(
-	lines: string[],
-	starts: number[],
-	window: { reviewScrollTop: number; reviewPageRows: number } | undefined,
-	height: number,
-	actionRows: number,
-	wide: boolean,
-	theme: Theme,
-	pageKeys: { up: string; down: string }
-): string[] {
-	if (!window) {
-		return lines;
-	}
-	const available = Math.max(1, height - (wide ? 0 : actionRows));
-	window.reviewPageRows = Math.max(1, available - 2);
-	if (lines.length <= available) {
-		window.reviewScrollTop = 0;
-		return lines;
-	}
-	const pageSize = Math.max(1, available - 2);
-	const top = Math.max(
-		0,
-		Math.min(window.reviewScrollTop, lines.length - pageSize)
-	);
-	window.reviewScrollTop = top;
-	const above = starts.filter((start) => start < top).length;
-	const below = starts.filter((start) => start >= top + pageSize).length;
-	return [
-		theme.fg(
-			"dim",
-			above ? ` ↑ ${above} more rows above · ${pageKeys.up}` : ""
-		),
-		...lines.slice(top, top + pageSize),
-		theme.fg(
-			"dim",
-			below ? ` ↓ ${below} more rows below · ${pageKeys.down}` : ""
-		),
-	];
-}
-
-function renderSubmitReviewLines(
-	model: ReturnType<typeof buildReviewScreenModel>,
-	theme: Theme,
-	width: number,
-	onReviewRow?: (index: number, start: number, end: number) => void
-): string[] {
-	const lines: string[] = [];
-	pushWrappedText(lines, UI_TEXT.reviewTitle, width, theme, "accent", " ", " ");
-	lines.push("");
-
-	for (const [index, question] of model.questions.entries()) {
-		const start = lines.length;
-		renderReviewQuestion(lines, question, theme, width);
-		onReviewRow?.(index, start, lines.length);
-		if (index < model.questions.length - 1) {
-			lines.push("");
+function reportVisibleRows(
+	review: ReviewLines,
+	windowed: ReturnType<typeof windowReviewRows>,
+	offset: number,
+	onReviewRow?: RowCallback
+) {
+	const rowOffset = offset + (windowed.indicators ? 1 : 0);
+	for (const [index, start] of review.starts.entries()) {
+		if (start >= windowed.top && start < windowed.top + windowed.pageSize) {
+			onReviewRow?.(
+				index,
+				rowOffset + start - windowed.top,
+				rowOffset + review.ends[index] - windowed.top
+			);
 		}
 	}
-
-	return lines;
 }
 
-function renderReviewQuestion(
+function renderReviewActions(
 	lines: string[],
-	question: ReturnType<typeof buildReviewScreenModel>["questions"][number],
+	actions: ReturnType<typeof buildReviewScreenModel>["actions"],
+	theme: Theme,
+	width: number,
+	focusedRow?: number,
+	onActionRow?: RowCallback
+) {
+	for (const [index, action] of actions.entries()) {
+		const start = lines.length;
+		const selected = focusedRow === undefined && action.selected;
+		const prefix = selected ? " ▶ " : "   ";
+		pushWrappedText(
+			lines,
+			`${index + 1}. ${action.label}`,
+			width,
+			theme,
+			selected ? "accent" : "text",
+			prefix,
+			prefix
+		);
+		onActionRow?.(index, start, lines.length);
+	}
+}
+
+function appendReviewHint(
+	lines: string[],
+	hint: string | undefined,
 	theme: Theme,
 	width: number
 ) {
-	pushWrappedText(lines, question.label, width, theme, "text", " ", " ");
-	if (question.unanswered) {
-		lines.push(
-			truncateToWidth(`   ${theme.fg("dim", UI_TEXT.unanswered)}`, width)
-		);
-		return;
+	if (hint) {
+		lines.push("");
+		pushWrappedText(lines, hint, width, theme, "dim", " ", " ");
 	}
+}
 
+function renderReviewRows(
+	questions: ReviewQuestionModel[],
+	theme: Theme,
+	width: number,
+	focusedRow?: number
+): ReviewLines {
+	const labelsWidth = Math.min(
+		Math.max(0, width - 18),
+		Math.max(...questions.map((question) => visibleWidth(question.label)))
+	);
+	const lines: string[] = [];
+	const starts: number[] = [];
+	const ends: number[] = [];
+	for (const [index, question] of questions.entries()) {
+		starts.push(lines.length);
+		renderReviewRow(
+			lines,
+			question,
+			theme,
+			width,
+			labelsWidth,
+			focusedRow === index
+		);
+		ends.push(lines.length);
+	}
+	return { lines, starts, ends };
+}
+
+function renderReviewRow(
+	lines: string[],
+	question: ReviewQuestionModel,
+	theme: Theme,
+	width: number,
+	labelsWidth: number,
+	focused: boolean
+) {
+	const status = question.unanswered ? "–" : "✓";
+	const answer = getReviewAnswerText(question);
+	const prefix = focused ? " ▶ " : "   ";
+	const label = truncateToWidth(question.label, labelsWidth);
+	const labelPrefix = `${prefix}${status} ${label}${" ".repeat(labelsWidth - visibleWidth(label) + 2)}`;
+	const color = focused ? "accent" : getReviewRowColor(question);
+	const wrapped = wrapText(
+		answer,
+		Math.max(1, width - visibleWidth(labelPrefix))
+	);
+	lines.push(
+		truncateToWidth(
+			`${theme.fg(color, labelPrefix)}${theme.fg(color, wrapped[0] ?? "")}`,
+			width
+		)
+	);
+	const indent = `   ${" ".repeat(labelsWidth + 3)}`;
+	for (const line of wrapped.slice(1)) {
+		lines.push(truncateToWidth(`${indent}${theme.fg(color, line)}`, width));
+	}
 	if (question.note) {
 		pushSavedNote({
 			lines,
@@ -175,17 +209,7 @@ function renderReviewQuestion(
 			indent: "     ",
 		});
 	}
-
 	for (const selection of question.selections ?? []) {
-		pushWrappedText(
-			lines,
-			`→ ${selection.label}`,
-			width,
-			theme,
-			"success",
-			"   ",
-			"     "
-		);
 		if (selection.note) {
 			pushSavedNote({
 				lines,
@@ -193,22 +217,10 @@ function renderReviewQuestion(
 				width,
 				theme,
 				indent: "     ",
+				label: selection.label,
 			});
 		}
 	}
-
-	if (question.answerText) {
-		pushWrappedText(
-			lines,
-			`→ ${question.answerText}`,
-			width,
-			theme,
-			question.isCustomOnly ? "text" : "success",
-			"   ",
-			"     "
-		);
-	}
-
 	for (const optionNote of question.extraOptionNotes ?? []) {
 		pushSavedNote({
 			lines,
@@ -221,39 +233,102 @@ function renderReviewQuestion(
 	}
 }
 
-function renderSubmitActions(
-	model: ReturnType<typeof buildReviewScreenModel>,
-	theme: Theme,
-	width: number,
-	onActionRow?: (index: number, start: number, end: number) => void
-): string[] {
-	const lines: string[] = [];
-	for (const [index, action] of model.actions.entries()) {
-		const start = lines.length;
-		const prefix = action.selected ? "❯ " : "  ";
-		pushWrappedText(
-			lines,
-			`${index + 1}. ${action.label}`,
-			width,
-			theme,
-			action.selected ? "accent" : "text",
-			prefix,
-			prefix
-		);
-		onActionRow?.(index, start, lines.length);
-	}
-	return lines;
+function getReviewRowColor(question: ReviewQuestionModel): "dim" | "text" {
+	return question.unanswered ? "dim" : "text";
 }
 
-function appendReviewShortcutHint(
-	lines: string[],
-	hint: string | undefined,
-	theme: Theme,
-	width: number
-) {
-	if (!hint) {
-		return;
+function getReviewAnswerText(question: ReviewQuestionModel): string {
+	if (question.unanswered) {
+		return "not answered";
 	}
-	lines.push("");
-	pushWrappedText(lines, hint, width, theme, "dim", " ", " ");
+	return (
+		question.answerText ??
+		question.selections?.map((selection) => selection.label).join(", ") ??
+		"not answered"
+	);
+}
+
+function windowReviewRows(
+	review: ReviewLines,
+	theme: Theme,
+	window: ReviewWindow | undefined,
+	availableRows: number,
+	pageKeys: { up: string; down: string },
+	focusedRow?: number
+): { lines: string[]; top: number; pageSize: number; indicators: boolean } {
+	if (!window) {
+		return {
+			lines: review.lines,
+			top: 0,
+			pageSize: review.lines.length,
+			indicators: false,
+		};
+	}
+	const available = Math.max(1, availableRows);
+	const indicators = available >= 3;
+	const pageSize = Math.max(1, available - (indicators ? 2 : 0));
+	window.reviewPageRows = pageSize;
+	if (review.lines.length <= available) {
+		window.reviewScrollTop = 0;
+		return {
+			lines: review.lines,
+			top: 0,
+			pageSize: review.lines.length,
+			indicators: false,
+		};
+	}
+	const top = getReviewWindowTop(
+		review,
+		window.reviewScrollTop,
+		pageSize,
+		focusedRow
+	);
+	window.reviewScrollTop = top;
+	const above = review.starts.filter((start) => start < top).length;
+	const below = review.starts.filter((start) => start >= top + pageSize).length;
+	return {
+		lines: [
+			...(indicators
+				? [
+						theme.fg(
+							"dim",
+							above ? ` ↑ ${above} more rows above · ${pageKeys.up}` : ""
+						),
+					]
+				: []),
+			...review.lines.slice(top, top + pageSize),
+			...(indicators
+				? [
+						theme.fg(
+							"dim",
+							below ? ` ↓ ${below} more rows below · ${pageKeys.down}` : ""
+						),
+					]
+				: []),
+		],
+		top,
+		pageSize,
+		indicators,
+	};
+}
+
+function getReviewWindowTop(
+	review: ReviewLines,
+	scrollTop: number,
+	pageSize: number,
+	focusedRow?: number
+): number {
+	const maxTop = review.lines.length - pageSize;
+	let top = Math.max(0, Math.min(scrollTop, maxTop));
+	if (focusedRow === undefined) {
+		return top;
+	}
+	const start = review.starts[focusedRow];
+	const end = review.ends[focusedRow];
+	if (end - start > pageSize || start < top) {
+		top = start;
+	} else if (end > top + pageSize) {
+		top = Math.min(maxTop, end - pageSize);
+	}
+	return top;
 }

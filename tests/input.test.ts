@@ -445,3 +445,80 @@ test("custom configured note shortcuts are used at runtime", () => {
 		kind: "openQuestionNote",
 	});
 });
+
+test("review arrows focus answers, Enter opens the row, and number shortcuts retain action semantics", async () => {
+	getAskConfigStore().setConfig({
+		...DEFAULT_ASK_CONFIG,
+		behaviour: {
+			...DEFAULT_ASK_CONFIG.behaviour,
+			doublePressReviewShortcuts: true,
+		},
+		notifications: { ...DEFAULT_ASK_CONFIG.notifications, enabled: false },
+	});
+	let component:
+		| { render(width: number): string[]; handleInput(data: string): void }
+		| undefined;
+	const flow = runAskFlow(
+		{
+			cwd: process.cwd(),
+			mode: "tui",
+			ui: {
+				custom(factory: (...args: unknown[]) => unknown) {
+					return new Promise((resolve) => {
+						component = factory(
+							{
+								terminal: { rows: 24, columns: 80 },
+								requestRender() {
+									// The test calls render directly.
+								},
+							},
+							plainTheme(),
+							{},
+							resolve
+						) as typeof component;
+					});
+				},
+			},
+		} as never,
+		{
+			questions: [
+				{
+					id: "first",
+					label: "First",
+					prompt: "First?",
+					options: [{ value: "a", label: "A" }],
+				},
+				{
+					id: "last",
+					label: "Last",
+					prompt: "Last?",
+					options: [{ value: "b", label: "B" }],
+				},
+			],
+		},
+		{ exec: unusedExec }
+	);
+	try {
+		await new Promise((resolve) => setImmediate(resolve));
+		assert(component);
+		component.handleInput("\t");
+		component.handleInput("\t");
+		component.handleInput("\x1b[A");
+		assert(component.render(80).join("\n").includes("▶ – Last   not answered"));
+		component.handleInput("\x1b[A");
+		assert(component.render(80).join("\n").includes("▶ – First  not answered"));
+		component.handleInput("\x1b[B");
+		component.handleInput("\r");
+		assert(component.render(80).join("\n").includes("Question 2 of 2"));
+		component.handleInput("\t");
+		component.handleInput("2");
+		assert(
+			component.render(80).join("\n").includes("Press 2 again to Elaborate")
+		);
+		component.handleInput("2");
+		const result = await flow;
+		assert.equal(result.mode, "elaborate");
+	} finally {
+		getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+	}
+});
