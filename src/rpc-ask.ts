@@ -11,6 +11,7 @@ import { toAskResult } from "./state/result.ts";
 import type { AskParams, AskQuestion, AskResult, AskState } from "./types.ts";
 
 interface RpcAskOptions {
+	onAnswerChange?: (state: AskState) => void;
 	presentSingleAsMulti: boolean;
 	remote?: RemoteAskRuntime;
 	shutdownSignal?: AbortSignal;
@@ -77,7 +78,12 @@ export async function runRpcAskFlow(
 			ctx,
 			state.questions,
 			dialogController.signal,
-			ended
+			ended,
+			(currentAnswers) => {
+				if (!finished) {
+					reportPartialAnswers(state, currentAnswers, options);
+				}
+			}
 		);
 		if (finished) {
 			return await ended;
@@ -107,19 +113,40 @@ export async function runRpcAskFlow(
 	}
 }
 
+function reportPartialAnswers(
+	state: AskState,
+	answers: Record<string, RemoteAskAnswer>,
+	options: RpcAskOptions
+) {
+	const partial = applyRemoteAskResponse(state, { kind: "answer", answers });
+	if (partial.ok) {
+		options.onAnswerChange?.(partial.state);
+	}
+}
+
 async function collectAnswers(
 	ctx: ExtensionContext,
 	questions: AskQuestion[],
 	signal: AbortSignal,
-	ended: Promise<AskResult>
+	ended: Promise<AskResult>,
+	onChange: (answers: Record<string, RemoteAskAnswer>) => void
 ): Promise<Record<string, RemoteAskAnswer> | undefined> {
 	const answers: Record<string, RemoteAskAnswer> = {};
 	for (const question of questions) {
-		const answer = await askQuestion(ctx, question, signal, ended);
+		const answer = await askQuestion(
+			ctx,
+			question,
+			signal,
+			ended,
+			(partial) => {
+				onChange({ ...answers, [question.id]: partial });
+			}
+		);
 		if (!answer) {
 			return;
 		}
 		answers[question.id] = answer;
+		onChange(answers);
 	}
 	return answers;
 }
@@ -135,7 +162,8 @@ async function askQuestion(
 	ctx: ExtensionContext,
 	question: AskQuestion,
 	signal: AbortSignal,
-	ended: Promise<AskResult>
+	ended: Promise<AskResult>,
+	onChange: (answer: RemoteAskAnswer) => void
 ): Promise<RemoteAskAnswer | undefined> {
 	const optionLabels = question.options.map(
 		(option, index) =>
@@ -161,7 +189,7 @@ async function askQuestion(
 		const index = optionLabels.indexOf(chosen);
 		return index < 0 ? undefined : { values: [question.options[index].value] };
 	}
-	return askMultiQuestion(ctx, question, signal, ended, customLabel);
+	return askMultiQuestion(ctx, question, signal, ended, customLabel, onChange);
 }
 
 async function askMultiQuestion(
@@ -169,7 +197,8 @@ async function askMultiQuestion(
 	question: AskQuestion,
 	signal: AbortSignal,
 	ended: Promise<AskResult>,
-	customLabel: string
+	customLabel: string,
+	onChange: (answer: RemoteAskAnswer) => void
 ): Promise<RemoteAskAnswer | undefined> {
 	const selected = new Set<string>();
 	let customText: string | undefined;
@@ -198,6 +227,7 @@ async function askMultiQuestion(
 				return;
 			}
 			customText = text;
+			onChange({ values: [...selected], customText });
 			continue;
 		}
 		const index = labels.indexOf(chosen);
@@ -206,6 +236,7 @@ async function askMultiQuestion(
 		}
 		const value = question.options[index].value;
 		toggleValue(selected, value);
+		onChange({ values: [...selected], customText });
 	}
 	return;
 }

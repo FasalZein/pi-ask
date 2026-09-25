@@ -1,4 +1,5 @@
 import type {
+	AgentToolUpdateCallback,
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
@@ -26,7 +27,8 @@ import type { RemoteAskRuntime } from "./remote-ask.ts";
 import { runRpcAskFlow } from "./rpc-ask.ts";
 import { AskParamsSchema } from "./schema.ts";
 import { prepareAskParams } from "./state/normalize.ts";
-import type { AskParams } from "./types.ts";
+import { summarizeResult, toAskResult } from "./state/result.ts";
+import type { AskParams, AskState } from "./types.ts";
 import { runAskFlow } from "./ui/controller.ts";
 
 export function registerAskTool(
@@ -71,7 +73,7 @@ async function executeAskTool(
 	toolCallId: string,
 	params: AskParams,
 	signal: AbortSignal | undefined,
-	_onUpdate: unknown,
+	onUpdate: AgentToolUpdateCallback | undefined,
 	ctx: ExtensionContext,
 	remoteAsk?: RemoteAskRuntime,
 	shutdownSignal?: AbortSignal
@@ -95,6 +97,23 @@ async function executeAskTool(
 		return nonInteractiveResponse(validation.state);
 	}
 	ctx.ui.setWorkingVisible(false);
+	let acceptingUpdates = true;
+	let lastAnswers = JSON.stringify(validation.state.answers);
+	const reportAnswerChange = (state: AskState) => {
+		if (!(acceptingUpdates && onUpdate)) {
+			return;
+		}
+		const result = toAskResult(state);
+		const answers = JSON.stringify(result.answers);
+		if (answers === lastAnswers) {
+			return;
+		}
+		lastAnswers = answers;
+		onUpdate({
+			content: [{ type: "text", text: summarizeResult(result) }],
+			details: result,
+		});
+	};
 	try {
 		const result =
 			ctx.mode === "rpc"
@@ -104,9 +123,11 @@ async function executeAskTool(
 						signal,
 						shutdownSignal,
 						toolCallId,
+						onAnswerChange: reportAnswerChange,
 					})
 				: await runAskFlow(ctx, params, {
 						shutdownSignal,
+						onAnswerChange: reportAnswerChange,
 						exec: pi.exec,
 						getCommands: () => pi.getCommands(),
 						signal,
@@ -118,6 +139,7 @@ async function executeAskTool(
 			? abortedResponse(params)
 			: successfulResponse(result, pi.getCommands());
 	} finally {
+		acceptingUpdates = false;
 		ctx.ui.setWorkingVisible(true);
 	}
 }

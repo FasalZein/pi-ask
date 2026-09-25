@@ -154,6 +154,10 @@ test("a pre-aborted ask returns without opening the UI", async () => {
 
 test("abort closes an open ask and emits remote completion", async () => {
 	const abort = new AbortController();
+	const updates: Array<{
+		content: Array<{ text: string }>;
+		details: { answers: Record<string, { values: string[] }> };
+	}> = [];
 	const events: Array<{ channel: string; data: any }> = [];
 	const handlers = new Map<string, (data: unknown) => void>();
 	const { createRemoteAskRuntime, PI_ASK_COMPLETED_EVENT } = await import(
@@ -195,7 +199,7 @@ test("abort closes an open ask and emits remote completion", async () => {
 		"call-abort",
 		sampleParams(),
 		abort.signal,
-		noop,
+		(update: (typeof updates)[number]) => updates.push(update),
 		{
 			cwd: process.cwd(),
 			mode: "tui",
@@ -229,8 +233,15 @@ test("abort closes an open ask and emits remote completion", async () => {
 	assert.equal(opened, true);
 	assert(component);
 	component.handleInput("1");
+	assert.deepEqual(
+		updates.map((update) => update.content[0].text),
+		["Goal: Speed"]
+	);
+	assert.deepEqual(updates[0].details.answers.goal.values, ["speed"]);
 	abort.abort();
 	const result = await pending;
+	component.handleInput("2");
+	assert.equal(updates.length, 1);
 	assert.equal(result.details.cancelReason, "aborted");
 	assert.deepEqual(result.details.answers, {});
 	assert.equal(
