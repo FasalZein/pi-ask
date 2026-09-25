@@ -216,7 +216,8 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 
 - tabbed multi-question flow
 - single-select, multi-select, and preview questions
-- optional warning-colored recommendation subtitles in standard and preview option lists without automatic selection
+- preview boxes appear beside options at wide widths and below them at narrow widths; each is at most 14 rows tall and shrinks on short terminals. Long previews scroll independently with `[` and `]` by default, show the number of lines above and below, and preserve plain-text spacing without Markdown. Long option descriptions may be shortened inside the cap.
+- recommended options show `(recommended)` after the label in standard and preview lists, without automatic selection
 - active question type changes via configurable `main.changeQuestionType` hotkey, default `t`; non-preview questions toggle `single <-> multi`; preview questions toggle `preview <-> multi`
 - inline free-form answers for all question types
 - native pi-style `@` file path autocomplete inside free-form answer and note editors

@@ -1,5 +1,9 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import {
+	sliceByColumn,
+	truncateToWidth,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import type { AskConfig } from "../config/schema.ts";
 import {
 	type FooterKeymapContext,
@@ -237,7 +241,11 @@ function renderPersistentBackground(
 }
 
 export function renderBox(
-	content: Array<{ text: string; color: ThemeColor }>,
+	content: Array<{
+		text: string;
+		color: ThemeColor;
+		preserveSpacing?: boolean;
+	}>,
 	width: number,
 	theme: Theme
 ): string[] {
@@ -247,7 +255,9 @@ export function renderBox(
 	const bottom = theme.fg("accent", `└${"─".repeat(innerWidth)}┘`);
 	const lines = [top];
 	for (const item of content) {
-		for (const rawLine of wrapText(item.text, innerWidth)) {
+		for (const rawLine of item.preserveSpacing
+			? wrapPreviewLine(item.text, innerWidth)
+			: wrapText(item.text, innerWidth)) {
 			const line = theme.fg(item.color, rawLine);
 			const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(line)));
 			lines.push(
@@ -257,6 +267,18 @@ export function renderBox(
 	}
 	lines.push(bottom);
 	return lines;
+}
+
+// Slice by display columns instead of words so ASCII diagrams retain their spaces.
+function wrapPreviewLine(line: string, width: number): string[] {
+	if (visibleWidth(line) <= width) {
+		return [line];
+	}
+	const parts: string[] = [];
+	for (let column = 0; column < visibleWidth(line); column += width) {
+		parts.push(sliceByColumn(line, column, width, true));
+	}
+	return parts;
 }
 
 export function renderPreviewPaneContent(
@@ -279,27 +301,31 @@ export function renderPreviewPaneContent(
 		return renderBox([{ text: NO_PREVIEW_TEXT, color: "dim" }], width, theme);
 	}
 
-	const content: Array<{ text: string; color: ThemeColor }> = [
-		{ text: selectedOption.label, color: "accent" },
-	];
-	if (selectedOption.description) {
-		content.push({ text: selectedOption.description, color: "muted" });
-	}
-	content.push({ text: "", color: "dim" });
-
 	const innerWidth = Math.max(
 		4,
 		Math.max(UI_DIMENSIONS.boxMinWidth, width) - 2
 	);
+	const indicator = (top: number, pageSize: number, total: number) =>
+		`↑ ${top} above · ↓ ${total - top - pageSize} more · ${scrollHint} scroll`;
 	const previewLines = (selectedOption.preview ?? NO_PREVIEW_TEXT)
 		.split("\n")
-		.flatMap((line) => wrapText(line, innerWidth));
-	// Keep two frame rows and one scroll hint inside the 14-line preview box.
-	const headingRows = content.reduce(
-		(count, item) => count + wrapText(item.text, innerWidth).length,
-		0
+		.flatMap((line) => wrapPreviewLine(line, innerWidth));
+	const content = previewHeading(
+		selectedOption,
+		innerWidth,
+		maxRows -
+			3 -
+			wrapText(indicator(scrollTop, 1, previewLines.length), innerWidth).length
 	);
-	const pageSize = Math.max(1, maxRows - headingRows - 3);
+	const headingRows = content.length;
+	const pageSize = previewPageSize(
+		previewLines.length,
+		headingRows,
+		maxRows,
+		innerWidth,
+		scrollTop,
+		indicator
+	);
 	const clipped = previewLines.length > pageSize;
 	const offset = Math.max(
 		0,
@@ -312,15 +338,64 @@ export function renderPreviewPaneContent(
 		content.push({
 			text: previewLine,
 			color: selectedOption.preview ? "text" : "dim",
+			preserveSpacing: true,
 		});
 	}
 	if (clipped) {
 		content.push({
-			text: `↑ ${offset} above · ↓ ${previewLines.length - offset - pageSize} more · ${scrollHint} scroll`,
+			text: indicator(offset, pageSize, previewLines.length),
 			color: "dim",
 		});
 	}
 	return renderBox(content, width, theme);
+}
+
+function previewHeading(
+	option: { label: string; description?: string },
+	width: number,
+	limit: number
+): Array<{ text: string; color: ThemeColor; preserveSpacing?: boolean }> {
+	const labelLines = wrapText(option.label, width).slice(
+		0,
+		Math.max(1, limit - 1)
+	);
+	const descriptionLines = option.description
+		? wrapText(option.description, width).slice(
+				0,
+				Math.max(0, limit - labelLines.length - 1)
+			)
+		: [];
+	return [
+		...labelLines.map((text) => ({ text, color: "accent" as const })),
+		...descriptionLines.map((text) => ({ text, color: "muted" as const })),
+		{ text: "", color: "dim" },
+	];
+}
+
+function previewPageSize(
+	total: number,
+	headingRows: number,
+	maxRows: number,
+	width: number,
+	scrollTop: number,
+	indicator: (top: number, pageSize: number, total: number) => string
+): number {
+	let pageSize = Math.max(1, maxRows - headingRows - 3);
+	// A wrapped indicator also consumes rows inside the capped box.
+	while (pageSize > 1 && total > pageSize) {
+		const offset = Math.max(0, Math.min(scrollTop, total - pageSize));
+		if (
+			headingRows +
+				pageSize +
+				wrapText(indicator(offset, pageSize, total), width).length +
+				2 <=
+			maxRows
+		) {
+			break;
+		}
+		pageSize--;
+	}
+	return pageSize;
 }
 
 export function mergeColumns(
