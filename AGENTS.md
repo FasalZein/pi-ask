@@ -36,8 +36,8 @@ Optimize for:
 - TypeScript
 - pnpm
 - Biome
-- pi extension APIs from `@mariozechner/pi-coding-agent`
-- TUI components from `@mariozechner/pi-tui`
+- pi extension APIs from `@earendil-works/pi-coding-agent`
+- TUI components from `@earendil-works/pi-tui`
 - TypeBox for tool schemas
 
 ## Commands
@@ -51,12 +51,15 @@ pnpm typecheck
 pnpm format
 pnpm lint
 pnpm check
+pnpm run check:ci
+pnpm run check:pi-floor
 ```
 
 Notes:
 
-- `pnpm check` runs Biome write/check flow for this repo.
+- `pnpm check` runs `ultracite check` (no writes); `pnpm run fix` applies fixes.
 - `pnpm test` runs the Node test runner against `tests/*.test.ts`.
+- The 4 gates are `pnpm test`, `pnpm typecheck`, `pnpm run check:ci`, and `pnpm run check:pi-floor` (typecheck and tests against pi 0.84.1 in a temp copy).
 - the extension is intended to be loaded dynamically with:
 
 ```bash
@@ -127,11 +130,17 @@ Update the relevant docs in the same change:
 1. read the relevant docs first
 2. inspect the existing implementation before refactoring
 3. make the smallest coherent change
-4. run:
-   - `pnpm format`
-   - `pnpm typecheck`
-   - `pnpm test`
+4. run `pnpm format` and the 4 gates
 5. update docs if behavior or expectations changed
+
+## Branches, PRs, and releases
+
+- One branch per ticket, one PR on `FasalZein/pi-ask`, squash merge. Never rewrite pushed history.
+- Squash subjects must pass commitlint (conventional commits); pass `--subject`, because git's default merge message fails.
+- After every merge, run the 4 gates on `main`. Branches that pass alone can fail together.
+- Fork CI (GitHub Actions) is not enabled, so local gates are the only check.
+- Release: bump `package.json` and `CHANGELOG.md` through a PR, then `gh release create vX.Y.Z -R FasalZein/pi-ask --target <merge sha>`. Never publish to npm (ADR 0004).
+- When running `scripts/behavior/` on Opus: use `cpa/claude-opus-5-5`. The harness passes `--no-extensions`, so `anthropic/*` loses `pi-claude-auth` and fails with "out of extra usage". Opus interview runs can exceed 120 s; set `PI_ASK_BEHAVIOR_TIMEOUT_MS=300000`.
 
 ## Agent skills
 
