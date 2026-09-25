@@ -28,6 +28,9 @@ function registerMockTool() {
 	const tools: Record<string, unknown>[] = [];
 	const entries: Array<{ customType: string; data: unknown }> = [];
 	registerAskTool({
+		getCommands() {
+			return [];
+		},
 		appendEntry(customType: string, data: unknown) {
 			entries.push({ customType, data });
 		},

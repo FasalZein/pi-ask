@@ -2,7 +2,7 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { Editor, type EditorTheme } from "@earendil-works/pi-tui";
+import type { Editor, EditorTheme } from "@earendil-works/pi-tui";
 import type { AskConfig } from "../config/schema.ts";
 import { getAskConfigStore } from "../config/store.ts";
 import {
@@ -17,6 +17,7 @@ import {
 	type RemoteAskSource,
 	type RemoteAskSubmitResolution,
 } from "../remote-ask.ts";
+import type { SkillCommands } from "../skill-references.ts";
 import { createInitialState } from "../state/create.ts";
 import {
 	getEditorDraft,
@@ -59,6 +60,7 @@ import {
 	resolveReviewShortcutDoublePress,
 } from "./review-shortcuts.ts";
 import { showAskSettings } from "./show-settings.ts";
+import { SkillReferenceEditor } from "./skill-reference-editor.ts";
 
 type CustomCallback = Parameters<ExtensionContext["ui"]["custom"]>[0];
 type CustomCallbackArgs = CustomCallback extends (...args: infer T) => unknown
@@ -71,6 +73,7 @@ type Done = (result: AskResult) => void;
 interface AskFlowOptions {
 	allowFreeform?: boolean;
 	exec: ExtensionAPI["exec"];
+	getCommands?: () => SkillCommands;
 	presentSingleAsMulti?: boolean;
 	remote?: {
 		runtime: RemoteAskRuntime;
@@ -154,7 +157,12 @@ function createAskFlowController(
 		flowOptions: params.flowOptions,
 		dismissNotice: undefined,
 		done,
-		editor: createEditor(tui, theme, params.cwd),
+		editor: createEditor(
+			tui,
+			theme,
+			params.cwd,
+			params.flowOptions.getCommands?.() ?? []
+		),
 		settingsOpen: false,
 		state: createInitialState(params, params.flowOptions),
 		suppressAutoInputForSelection: false,
@@ -635,9 +643,14 @@ function saveEditorState(controller: AskFlowController): AskState {
 	return saveEditorDraft(controller.state, text);
 }
 
-function createEditor(tui: Tui, theme: Theme, cwd: string) {
-	const editor = new Editor(tui, createEditorTheme(theme));
-	editor.setAutocompleteProvider(createAskAutocompleteProvider(cwd));
+function createEditor(
+	tui: Tui,
+	theme: Theme,
+	cwd: string,
+	commands: SkillCommands
+) {
+	const editor = new SkillReferenceEditor(tui, createEditorTheme(theme));
+	editor.setAutocompleteProvider(createAskAutocompleteProvider(cwd, commands));
 	return editor;
 }
 

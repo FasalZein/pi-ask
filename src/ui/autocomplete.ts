@@ -1,6 +1,13 @@
 import { accessSync, constants as fsConstants } from "node:fs";
 import { delimiter, join } from "node:path";
-import { CombinedAutocompleteProvider } from "@earendil-works/pi-tui";
+import {
+	type AutocompleteProvider,
+	CombinedAutocompleteProvider,
+} from "@earendil-works/pi-tui";
+import { getSkillCommands, type SkillCommands } from "../skill-references.ts";
+
+export const SKILL_COMPLETION_PREFIX = /(^|\s)(\/skill:[a-zA-Z0-9._-]*)$/;
+const WHITESPACE_START = /^\s/;
 
 const FD_BINARY_NAMES =
 	process.platform === "win32"
@@ -12,15 +19,63 @@ const FD_BINARY_NAMES =
  * the public extension API. Custom editors therefore need to supply the fd path
  * themselves when reusing CombinedAutocompleteProvider for `@` file mentions.
  */
-export function createAskAutocompleteProvider(cwd: string) {
-	return Object.assign(
-		new CombinedAutocompleteProvider(
-			[],
-			cwd,
-			findAutocompleteBinary(FD_BINARY_NAMES)
-		),
-		{ triggerCharacters: ["@"] }
+export function createAskAutocompleteProvider(
+	cwd: string,
+	commands: SkillCommands = []
+): AutocompleteProvider {
+	const fileProvider = new CombinedAutocompleteProvider(
+		[],
+		cwd,
+		findAutocompleteBinary(FD_BINARY_NAMES)
 	);
+	const skillProvider = new CombinedAutocompleteProvider(
+		getSkillCommands(commands).map(({ name, description }) => ({
+			name,
+			description,
+		})),
+		cwd
+	);
+	return {
+		triggerCharacters: ["@"],
+		async getSuggestions(lines, cursorLine, cursorCol, options) {
+			const before = (lines[cursorLine] ?? "").slice(0, cursorCol);
+			const token = SKILL_COMPLETION_PREFIX.exec(before)?.[2];
+			if (token) {
+				const suggestions = await skillProvider.getSuggestions(
+					[token],
+					0,
+					token.length,
+					{ ...options, force: false }
+				);
+				return suggestions ? { ...suggestions, prefix: token } : null;
+			}
+			return fileProvider.getSuggestions(lines, cursorLine, cursorCol, options);
+		},
+		applyCompletion(lines, cursorLine, cursorCol, item, prefix) {
+			if (!prefix.startsWith("/skill:")) {
+				return fileProvider.applyCompletion(
+					lines,
+					cursorLine,
+					cursorCol,
+					item,
+					prefix
+				);
+			}
+			const line = lines[cursorLine] ?? "";
+			const after = line.slice(cursorCol);
+			const insertion = `/${item.value}${WHITESPACE_START.test(after) ? "" : " "}`;
+			const updated = [...lines];
+			updated[cursorLine] =
+				line.slice(0, cursorCol - prefix.length) + insertion + after;
+			return {
+				lines: updated,
+				cursorLine,
+				cursorCol: cursorCol - prefix.length + insertion.length,
+			};
+		},
+		shouldTriggerFileCompletion: (lines, line, col) =>
+			fileProvider.shouldTriggerFileCompletion(lines, line, col),
+	};
 }
 
 function findAutocompleteBinary(binaryNames: readonly string[]): string | null {

@@ -2,6 +2,10 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { UI_DIMENSIONS } from "./constants/ui.ts";
 import { renderResultText } from "./result.ts";
+import {
+	resolveSkillReferences,
+	type SkillCommands,
+} from "./skill-references.ts";
 import { createInitialState } from "./state/create.ts";
 import { collectValidationIssues } from "./state/normalize.ts";
 import { summarizeResult, toAskResult } from "./state/result.ts";
@@ -59,10 +63,37 @@ export function nonInteractiveResponse(
 	};
 }
 
-export function successfulResponse(result: AskResult) {
+export function successfulResponse(
+	result: AskResult,
+	commands: SkillCommands = []
+) {
+	const texts = Object.values(result.answers).flatMap((answer) => [
+		answer.customText ?? "",
+		answer.note ?? "",
+		...Object.values(answer.optionNotes ?? {}),
+	]);
+	for (const item of result.elaboration?.items ?? []) {
+		texts.push(
+			item.note,
+			item.answer?.customText ?? "",
+			item.answer?.note ?? ""
+		);
+	}
+	const resolvedSkills = result.cancelled
+		? []
+		: resolveSkillReferences(texts, commands);
 	return {
-		content: [{ type: "text" as const, text: summarizeResult(result) }],
-		details: result,
+		content: [
+			{
+				type: "text" as const,
+				text:
+					summarizeResult(result) +
+					resolvedSkills
+						.map(({ name, path }) => `\nRead skill /skill:${name}: ${path}`)
+						.join(""),
+			},
+		],
+		details: resolvedSkills.length ? { ...result, resolvedSkills } : result,
 	};
 }
 

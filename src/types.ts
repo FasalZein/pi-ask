@@ -130,6 +130,7 @@ export interface AskResult {
 	error?: AskValidationError;
 	mode: "submit" | "elaborate";
 	questions: AskQuestionSummary[];
+	resolvedSkills?: Array<{ name: string; path: string }>;
 	title?: string;
 }
 
