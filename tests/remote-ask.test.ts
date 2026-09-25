@@ -16,6 +16,13 @@ import {
 import { createInitialState } from "../src/state/create.ts";
 import { runAskFlow } from "../src/ui/controller.ts";
 
+test("remote bridge uses fork-scoped channels", () => {
+	assert.equal(PI_ASK_STARTED_EVENT, "pi-ask:started");
+	assert.equal(PI_ASK_COMPLETED_EVENT, "pi-ask:completed");
+	assert.equal(PI_ASK_SUBMIT_EVENT, "pi-ask:submit");
+	assert.equal(PI_ASK_SUBMIT_RESULT_EVENT, "pi-ask:submit-result");
+});
+
 const UNKNOWN_APPROVE_VALUE_RE = /Unknown option value "approve"/;
 
 class TestEventBus {

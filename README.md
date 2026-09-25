@@ -1,15 +1,14 @@
 ![pi-ask main image](docs/media/pi-ask-main.png)
 
-# @eko24ive/pi-ask
+# @fasalzein/pi-ask
 
-[![npm downloads](https://badgen.net/npm/dm/@eko24ive/pi-ask)](https://www.npmjs.com/package/@eko24ive/pi-ask)
-[![last commit](https://badgen.net/github/last-commit/eko24ive/pi-ask?v=4b6c81e)](https://github.com/eko24ive/pi-ask/commits/main)
-[![stars](https://badgen.net/github/stars/eko24ive/pi-ask)](https://github.com/eko24ive/pi-ask/stargazers)
+[![last commit](https://badgen.net/github/last-commit/FasalZein/pi-ask)](https://github.com/FasalZein/pi-ask/commits/main)
+[![stars](https://badgen.net/github/stars/FasalZein/pi-ask)](https://github.com/FasalZein/pi-ask/stargazers)
 
 > [!IMPORTANT]
 > Contributions are welcome in chill mode: please open an issue and link your fork or branch instead of expecting rapid pull-request reviews.
 
-`@eko24ive/pi-ask` is an ask tool that cares about your answers.
+`@fasalzein/pi-ask` is an ask tool that cares about your answers.
 
 It lets an agent pause, ask structured questions in a terminal UI, and continue with normalized answers instead of guessing.
 
@@ -32,19 +31,15 @@ Requires `@earendil-works/pi-*` 0.84.0 or later. CI tests compatibility with pi 
 To check the 0.84.1 floor locally without changing the main lockfile, run `pnpm run check:pi-floor`.
 
 ```bash
-pi install npm:@eko24ive/pi-ask
+pi install git:github.com/FasalZein/pi-ask
 ```
 
-You can also install from git:
-
-```bash
-pi install git:github.com/eko24ive/pi-ask
-```
+This fork originates from [`@eko24ive/pi-ask`](https://github.com/eko24ive/pi-ask). It is not published to npm.
 
 Or try it without installing (load once for the current run):
 
 ```bash
-pi -e npm:@eko24ive/pi-ask
+pi -e git:github.com/FasalZein/pi-ask
 ```
 
 ## Features
@@ -110,7 +105,7 @@ Capture free-form input inline without leaving the flow.
 
 Open ask settings with `?` during the ask flow, or with the `/ask-settings` command from pi.
 
-Keymaps are context-aware and configurable in `~/.pi/agent/extensions/eko24ive-pi-ask.json`.
+Keymaps are context-aware and configurable in `~/.pi/agent/extensions/pi-ask.json`.
 Each action accepts a key string or an array of aliases.
 
 Default contexts:
@@ -277,7 +272,7 @@ pnpm test
 
 ### Commit workflow
 
-This repo uses `lefthook`, Commitizen, conventional commitlint, and semantic-release.
+This repo uses `lefthook`, Commitizen, and conventional commitlint. Releases are manual GitHub releases; this fork does not publish to npm.
 
 If you want local hooks, install them once after `pnpm install`:
 
