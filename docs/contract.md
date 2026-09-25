@@ -170,6 +170,10 @@ The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, e
 }
 ```
 
+## Live progress
+
+While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each committed answer change. Each update carries the answers so far in `details` and the same summary text shape as a submitted result in `content`. Navigation and review do not send updates. Updates stop when the flow ends, are not stored in the session, and are not sent to the model. The final result text is unchanged.
+
 ## Output rules
 
 - `cancelled: true` means the user dismissed the flow, the run was aborted, UI was unavailable, or the payload was invalid before UI opened; every cancelled result includes `cancelReason`: `user` for cancel or dismiss (including command flows), `aborted` for a tool run interrupted by its abort signal, `ui_unavailable` for non-interactive modes, or `invalid_input` for payload validation failures. An aborted tool result says exactly: `The ask_user form was closed because the run was aborted. No answers were collected.` It contains no answers or compact follow-up hint.

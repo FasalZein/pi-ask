@@ -75,6 +75,7 @@ interface AskFlowOptions {
 	allowFreeform?: boolean;
 	exec: ExtensionAPI["exec"];
 	getCommands?: () => SkillCommands;
+	onAnswerChange?: (state: AskState) => void;
 	onTabChange?: (index: number) => void;
 	presentSingleAsMulti?: boolean;
 	remote?: {
@@ -544,6 +545,12 @@ function openOptionNote(controller: AskFlowController) {
 	);
 }
 
+function reportAnswerChange(controller: AskFlowController) {
+	if (!(controller.finished || controller.state.completed)) {
+		controller.flowOptions.onAnswerChange?.(controller.state);
+	}
+}
+
 function commitState(
 	controller: AskFlowController,
 	nextState: AskState,
@@ -564,6 +571,7 @@ function commitState(
 	if (options.syncSelection !== false) {
 		syncSelection(controller);
 	}
+	reportAnswerChange(controller);
 	controller.state = maybeAutoSubmitState(controller.state, controller.config);
 	if (controller.state.activeTabIndex !== previousTab) {
 		controller.flowOptions.onTabChange?.(controller.state.activeTabIndex);
@@ -584,6 +592,7 @@ function submitEditor(controller: AskFlowController, value: string) {
 	}
 	controller.state = nextState;
 	syncSelection(controller);
+	reportAnswerChange(controller);
 	controller.state = maybeAutoSubmitState(controller.state, controller.config);
 	if (controller.state.activeTabIndex !== previousTab) {
 		controller.flowOptions.onTabChange?.(controller.state.activeTabIndex);
@@ -605,6 +614,7 @@ function closeEditor(controller: AskFlowController) {
 	const nextState = saveEditorState(controller);
 	controller.suppressAutoInputForSelection = nextState.view.kind !== "input";
 	controller.state = nextState;
+	reportAnswerChange(controller);
 	refresh(controller);
 }
 

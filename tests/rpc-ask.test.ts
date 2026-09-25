@@ -20,6 +20,10 @@ interface Dialog {
 }
 function setup(params: AskParams, signal = new AbortController()) {
 	const dialogs: Dialog[] = [];
+	const updates: Array<{
+		content: Array<{ text: string }>;
+		details: { answers: Record<string, { values: string[] }> };
+	}> = [];
 	const emitted: Array<{ channel: string; data: any }> = [];
 	const listeners = new Map<string, (data: any) => void>();
 	const bus = {
@@ -80,9 +84,7 @@ function setup(params: AskParams, signal = new AbortController()) {
 		"rpc-call",
 		params,
 		signal.signal,
-		() => {
-			// No live update expected here.
-		},
+		(update: (typeof updates)[number]) => updates.push(update),
 		{
 			mode: "rpc",
 			[HAS_UI]: true,
@@ -98,7 +100,7 @@ function setup(params: AskParams, signal = new AbortController()) {
 		assert(dialog, "expected a dialog");
 		return dialog;
 	}
-	return { pending, next, emitted, bus, signal, remote };
+	return { pending, next, emitted, bus, signal, remote, updates };
 }
 function dialogOptions(dialog: Dialog): string[] {
 	assert(dialog.options, "expected select options");
@@ -269,6 +271,9 @@ test("bridge submit wins during an open RPC dialog and dismisses it", async () =
 	const result = await flow.pending;
 	assert.equal(open.signal?.aborted, true);
 	assert.deepEqual(result.details.answers.goal.values, ["safety"]);
+	open.resolve(dialogOptions(open)[0]);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(flow.updates, []);
 	assert.equal(
 		flow.emitted.filter((e) => e.channel === PI_ASK_COMPLETED_EVENT).length,
 		1
@@ -287,4 +292,46 @@ test("disposing the remote runtime aborts an open RPC dialog", async () => {
 		eventData(flow.emitted, PI_ASK_COMPLETED_EVENT).result.cancelReason,
 		"aborted"
 	);
+});
+
+test("RPC reports partial answers after each change and stops on submit", async () => {
+	const flow = setup({
+		questions: [
+			{ ...one.questions[0], type: "multi" },
+			{ ...one.questions[0], id: "next", label: "Next", prompt: "Next?" },
+		],
+	});
+	const first = await flow.next();
+	first.resolve(dialogOptions(first)[0]);
+	const second = await flow.next();
+	assert.deepEqual(
+		flow.updates.map((update) => update.content[0].text),
+		["Goal: Speed\nNext: (no answer)"]
+	);
+	second.resolve(dialogOptions(second)[0]); // Remove Speed.
+	const third = await flow.next();
+	third.resolve(dialogOptions(third)[1]); // Add Safety.
+	const fourth = await flow.next();
+	fourth.resolve("Done");
+	const next = await flow.next();
+	next.resolve(dialogOptions(next)[0]);
+	const review = await flow.next();
+	assert.deepEqual(
+		flow.updates.map((update) => update.content[0].text),
+		[
+			"Goal: Speed\nNext: (no answer)",
+			"Goal: (no answer)\nNext: (no answer)",
+			"Goal: Safety\nNext: (no answer)",
+			"Goal: Safety\nNext: Speed",
+		]
+	);
+	assert.deepEqual(
+		flow.updates.map((update) => update.details.answers.goal?.values),
+		[["speed"], undefined, ["safety"], ["safety"]]
+	);
+	review.resolve("Submit");
+	const result = await flow.pending;
+	assert.equal(result.content[0].text, "Goal: Safety\nNext: Speed");
+	assert.equal(flow.updates.length, 4);
+	flow.remote.disposeAll();
 });
