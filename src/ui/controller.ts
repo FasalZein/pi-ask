@@ -45,6 +45,7 @@ import {
 } from "../state/transitions.ts";
 import { isEditingView } from "../state/view.ts";
 import type { AskParams, AskResult, AskState } from "../types.ts";
+import { withWaitingIndicator } from "../waiting-indicator.ts";
 import { maybeAutoSubmitState } from "./auto-submit.ts";
 import { createAskAutocompleteProvider } from "./autocomplete.ts";
 import {
@@ -74,6 +75,7 @@ interface AskFlowOptions {
 	allowFreeform?: boolean;
 	exec: ExtensionAPI["exec"];
 	getCommands?: () => SkillCommands;
+	onTabChange?: (index: number) => void;
 	presentSingleAsMulti?: boolean;
 	remote?: {
 		runtime: RemoteAskRuntime;
@@ -138,15 +140,17 @@ export async function runAskFlow(
 			cancelReason: "ui_unavailable",
 		};
 	}
-	return ctx.ui.custom<AskResult>((...args) =>
-		createAskFlowController(args, {
-			...params,
-			config,
-			configNotice: notice?.text,
-			cwd: ctx.cwd,
-			ctx,
-			flowOptions,
-		})
+	return withWaitingIndicator(ctx, params.questions.length, (onTabChange) =>
+		ctx.ui.custom<AskResult>((...args) =>
+			createAskFlowController(args, {
+				...params,
+				config,
+				configNotice: notice?.text,
+				cwd: ctx.cwd,
+				ctx,
+				flowOptions: { ...flowOptions, onTabChange },
+			})
+		)
 	);
 }
 
@@ -555,11 +559,15 @@ function commitState(
 		controller.previewScrollTop = 0;
 	}
 	controller.suppressAutoInputForSelection = false;
+	const previousTab = controller.state.activeTabIndex;
 	controller.state = nextState;
 	if (options.syncSelection !== false) {
 		syncSelection(controller);
 	}
 	controller.state = maybeAutoSubmitState(controller.state, controller.config);
+	if (controller.state.activeTabIndex !== previousTab) {
+		controller.flowOptions.onTabChange?.(controller.state.activeTabIndex);
+	}
 	hydrateEditor(controller);
 	refresh(controller);
 	if (options.finish) {
@@ -570,12 +578,16 @@ function commitState(
 function submitEditor(controller: AskFlowController, value: string) {
 	controller.suppressAutoInputForSelection = false;
 	const nextState = submitEditorDraft(controller.state, value);
-	if (nextState.activeTabIndex !== controller.state.activeTabIndex) {
+	const previousTab = controller.state.activeTabIndex;
+	if (nextState.activeTabIndex !== previousTab) {
 		clearFooterNotices(controller);
 	}
 	controller.state = nextState;
 	syncSelection(controller);
 	controller.state = maybeAutoSubmitState(controller.state, controller.config);
+	if (controller.state.activeTabIndex !== previousTab) {
+		controller.flowOptions.onTabChange?.(controller.state.activeTabIndex);
+	}
 	hydrateEditor(controller);
 	refresh(controller);
 	maybeFinish(controller);
