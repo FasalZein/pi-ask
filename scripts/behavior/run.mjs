@@ -5,6 +5,8 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cases } from "./cases.mjs";
+import { interviewMetrics, tokenUsage } from "./metrics.ts";
+import { executePrint } from "./print.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const base = "9router/cbcn/deepseek-v4.1-flash";
@@ -53,6 +55,7 @@ if (
 }
 // Declared before the batch loop: records built inside it read this constant.
 const configDoc = /docs\/configuration\.md/;
+const planMarker = /(?:^|\n)PLAN:/i;
 await mkdir(outputDir, { recursive: true });
 const batch = `${new Date().toISOString().replace(/[:.]/g, "-")}-${process.pid}`;
 batchRuns: for (const model of models) {
@@ -66,7 +69,10 @@ batchRuns: for (const model of models) {
 				const name = `${batch}-${model.replaceAll("/", "_")}-${mode}-${behavior.id}-${run}`;
 				const path = join(outputDir, `${name}.json`);
 				try {
-					const record = await execute({
+					const record = await (behavior.kind === "print"
+						? executePrint
+						: execute)({
+						root,
 						model,
 						mode,
 						behavior,
@@ -101,36 +107,8 @@ async function execute({ model, mode, behavior, run, timeoutMs }) {
 	const tracePath = join(scratch, "bridge.jsonl");
 	const [provider, ...idParts] = model.split("/");
 	const modelId = idParts.join("/");
-	const env = { ...process.env };
-	env.PI_ASK_PROMPT_MODE = mode;
-	env.PI_ASK_BEHAVIOR_TRACE = tracePath;
-	env.PI_ASK_BEHAVIOR_CASE = behavior.id;
-	const child = spawn(
-		"pi",
-		[
-			"--mode",
-			"rpc",
-			"--no-session",
-			"--no-extensions",
-			"--no-skills",
-			"--no-prompt-templates",
-			"--no-themes",
-			"--no-context-files",
-			"--tools",
-			"read,ask_user",
-			"-e",
-			join(root, "src/index.ts"),
-			"-e",
-			join(root, "scripts/behavior/bridge.ts"),
-			"--model",
-			model,
-		],
-		{
-			cwd: root,
-			env,
-			stdio: ["pipe", "pipe", "pipe"],
-		}
-	);
+	const startedAt = Date.now();
+	const child = spawnRpc(model, mode, behavior.id, tracePath);
 	let stderr = "";
 	const events = [];
 	let buffer = "";
@@ -155,6 +133,7 @@ async function execute({ model, mode, behavior, run, timeoutMs }) {
 			if (line.trim()) {
 				try {
 					const event = JSON.parse(line);
+					event.receivedAt = Date.now();
 					events.push(event);
 					if (
 						event.type === "response" &&
@@ -189,22 +168,7 @@ async function execute({ model, mode, behavior, run, timeoutMs }) {
 				}, timeoutMs);
 			}),
 		]);
-		const rejected = events.find(
-			(event) => event.type === "response" && !event.success
-		);
-		if (rejected) {
-			throw new Error(`RPC ${rejected.command}: ${rejected.error}`);
-		}
-		if (
-			status.code !== 0 ||
-			!finished ||
-			buffer.trim() ||
-			stderr.includes("Invalid RPC JSON")
-		) {
-			throw new Error(
-				`RPC exit=${status.code} signal=${status.signal} agentEnd=${finished} stderr=${stderr.slice(-3000)}`
-			);
-		}
+		checkRpcStatus(events, status, finished, buffer, stderr);
 		return await buildRecord({
 			events,
 			tracePath,
@@ -213,6 +177,7 @@ async function execute({ model, mode, behavior, run, timeoutMs }) {
 			behavior,
 			run,
 			stderr,
+			startedAt,
 		});
 	} finally {
 		clearTimeout(timer);
@@ -226,6 +191,80 @@ async function execute({ model, mode, behavior, run, timeoutMs }) {
 	}
 }
 
+function checkRpcStatus(events, status, finished, buffer, stderr) {
+	const rejected = events.find(
+		(event) => event.type === "response" && !event.success
+	);
+	if (rejected) {
+		throw new Error(`RPC ${rejected.command}: ${rejected.error}`);
+	}
+	if (
+		status.code !== 0 ||
+		!finished ||
+		buffer.trim() ||
+		stderr.includes("Invalid RPC JSON")
+	) {
+		throw new Error(
+			`RPC exit=${status.code} signal=${status.signal} agentEnd=${finished} stderr=${stderr.slice(-3000)}`
+		);
+	}
+}
+
+function spawnRpc(model, mode, caseId, tracePath) {
+	const env = { ...process.env };
+	env.PI_ASK_PROMPT_MODE = mode;
+	env.PI_ASK_BEHAVIOR_TRACE = tracePath;
+	env.PI_ASK_BEHAVIOR_CASE = caseId;
+	return spawn(
+		"pi",
+		[
+			"--mode",
+			"rpc",
+			"--no-session",
+			"--no-extensions",
+			"--no-skills",
+			"--no-prompt-templates",
+			"--no-themes",
+			"--no-context-files",
+			"--tools",
+			"read,ask_user",
+			"-e",
+			join(root, "src/index.ts"),
+			"-e",
+			join(root, "scripts/behavior/bridge.ts"),
+			"--model",
+			model,
+		],
+		{
+			cwd: root,
+			env,
+			stdio: ["pipe", "pipe", "pipe"],
+		}
+	);
+}
+
+function buildInterviewMetrics(asks, events, startedAt) {
+	const planEvent = events.find(
+		(e) =>
+			e.type === "message_end" &&
+			e.message?.role === "assistant" &&
+			e.message.content?.some(
+				(part) => part.type === "text" && planMarker.test(part.text)
+			)
+	);
+	return {
+		...interviewMetrics(
+			asks,
+			startedAt,
+			planEvent?.receivedAt ?? startedAt,
+			Boolean(planEvent)
+		),
+		runDurationMs:
+			(events.findLast((e) => e.type === "agent_end")?.receivedAt ??
+				startedAt) - startedAt,
+	};
+}
+
 function followUpKind(asks, behavior, text) {
 	if (asks.length > 1) {
 		return asks.slice(1).some((c) => c.args?.questions?.length >= 2)
@@ -237,29 +276,7 @@ function followUpKind(asks, behavior, text) {
 		: "none";
 }
 
-async function buildRecord({
-	events,
-	tracePath,
-	model,
-	mode,
-	behavior,
-	run,
-	stderr,
-}) {
-	const errors = events.filter(
-		(e) =>
-			(e.type === "response" && !e.success) ||
-			e.type === "agent_error" ||
-			e.type === "error" ||
-			(e.type === "message_end" &&
-				e.message?.role === "assistant" &&
-				e.message?.stopReason === "error")
-	);
-	if (errors.length) {
-		throw new Error(
-			`RPC error: ${JSON.stringify(errors).slice(0, 3000)} stderr=${stderr.slice(-1000)}`
-		);
-	}
+async function readBridgeTrace(tracePath) {
 	const traceText = await readFile(tracePath, "utf8").catch((error) => {
 		if (error.code === "ENOENT") {
 			return "";
@@ -281,6 +298,34 @@ async function buildRecord({
 	) {
 		throw new Error(`Bridge failure: ${traceText}`);
 	}
+	return trace;
+}
+
+async function buildRecord({
+	events,
+	tracePath,
+	model,
+	mode,
+	behavior,
+	run,
+	stderr,
+	startedAt,
+}) {
+	const errors = events.filter(
+		(e) =>
+			(e.type === "response" && !e.success) ||
+			e.type === "agent_error" ||
+			e.type === "error" ||
+			(e.type === "message_end" &&
+				e.message?.role === "assistant" &&
+				e.message?.stopReason === "error")
+	);
+	if (errors.length) {
+		throw new Error(
+			`RPC error: ${JSON.stringify(errors).slice(0, 3000)} stderr=${stderr.slice(-1000)}`
+		);
+	}
+	const trace = await readBridgeTrace(tracePath);
 	const calls = events
 		.filter((e) => e.type === "tool_execution_start")
 		.map((e) => ({ name: e.toolName, args: e.args }));
@@ -328,5 +373,9 @@ async function buildRecord({
 		toolCalls: calls,
 		assistantText: text,
 		bridgeTrace: trace,
+		tokenUsage: tokenUsage(events),
+		...(behavior.id === "interview"
+			? { interview: buildInterviewMetrics(asks, events, startedAt) }
+			: {}),
 	};
 }
