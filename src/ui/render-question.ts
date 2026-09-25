@@ -1,9 +1,6 @@
-import {
-	truncateToWidth,
-	visibleWidth,
-	wrapTextWithAnsi,
-} from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { UI_DIMENSIONS, UI_TEXT } from "../constants/ui.ts";
+import { getAnswer } from "../state/selectors.ts";
 import {
 	measurePreviewLeftWidth,
 	mergeColumns,
@@ -24,7 +21,27 @@ export function renderQuestionScreen(context: QuestionRenderContext) {
 	const model = buildQuestionScreenModel(context);
 
 	pushWrappedText(lines, question.prompt, width, theme, "text", " ", " ");
-	renderQuestionNote(lines, model.questionNote, context);
+	if (question.type === "multi") {
+		const answer = getAnswer(context.state, question.id);
+		const selectedCount =
+			(answer?.selected.length ?? 0) +
+			(answer?.customSelected && answer.customText?.trim() ? 1 : 0);
+		const optionCount = context.options.filter(
+			(option) => !option.isCustomOption
+		).length;
+		pushWrappedText(
+			lines,
+			`Pick any · ${selectedCount} of ${optionCount} selected`,
+			width,
+			theme,
+			"muted",
+			" ",
+			" "
+		);
+	}
+	if (question.type !== "multi" || model.questionNote) {
+		renderQuestionNote(lines, model.questionNote, context);
+	}
 
 	if (model.mode === "preview") {
 		renderPreviewQuestion(context, model);
@@ -89,13 +106,7 @@ function renderStandardOption(
 		row.pointer,
 		" ".repeat(visibleWidth(row.pointer))
 	);
-	renderOptionSubtitle(
-		lines,
-		row.description,
-		row.recommended,
-		context.width,
-		context.theme
-	);
+	renderOptionSubtitle(lines, row.description, context.width, context.theme);
 	renderOptionDetail(lines, row.detail, context, {
 		suppressLeadingGap: !!row.description,
 	});
@@ -111,14 +122,14 @@ function renderPreviewQuestion(
 
 	const { lines, width, theme } = context;
 	const add = (text = "") => lines.push(truncateToWidth(text, width));
+	const introRows = lines.length;
+	const onOptionRow =
+		context.onOptionRow &&
+		((index: number, start: number, end: number) =>
+			context.onOptionRow?.(index, introRows + start, introRows + end));
 
 	if (model.previewLayout === "custom") {
-		renderPreviewOptionList(
-			model.rows,
-			theme,
-			width,
-			context.onOptionRow
-		).forEach(add);
+		renderPreviewOptionList(model.rows, theme, width, onOptionRow).forEach(add);
 	} else if (model.previewLayout === "wide") {
 		renderWidePreviewLayout(
 			add,
@@ -126,7 +137,7 @@ function renderPreviewQuestion(
 			theme,
 			width,
 			model.selectedOption,
-			context.onOptionRow,
+			onOptionRow,
 			context.previewScrollTop,
 			context.previewScrollHint,
 			context.previewMaxRows,
@@ -140,7 +151,7 @@ function renderPreviewQuestion(
 			theme,
 			width,
 			model.selectedOption,
-			context.onOptionRow,
+			onOptionRow,
 			context.previewScrollTop,
 			context.previewScrollHint,
 			context.previewMaxRows,
@@ -225,14 +236,14 @@ function renderPreviewOptionList(
 		const start = lines.length;
 		pushWrappedText(
 			lines,
-			`${row.index + 1}. ${row.label}`,
+			formatOptionLabel(row),
 			width,
 			theme,
 			row.color,
 			row.pointer,
-			"  "
+			" ".repeat(visibleWidth(row.pointer))
 		);
-		renderOptionSubtitle(lines, row.description, row.recommended, width, theme);
+		renderOptionSubtitle(lines, row.description, width, theme);
 		onOptionRow?.(row.index, start, lines.length);
 	}
 	return lines;
@@ -315,7 +326,7 @@ function renderEditorWithIndent(args: {
 function formatOptionLabel(row: OptionRowModel): string {
 	return row.isFreeformOnly
 		? row.label
-		: `${row.index + 1}. ${row.prefix}${row.label}`;
+		: `${row.index + 1}. ${row.prefix}${row.label}${row.recommended ? ` ${UI_TEXT.recommendedMarker}` : ""}`;
 }
 
 function renderInteractiveCustomOption(
@@ -341,33 +352,18 @@ function renderInteractiveCustomOption(
 function renderOptionSubtitle(
 	lines: string[],
 	description: string | undefined,
-	recommended: boolean,
 	width: number,
 	theme: Theme
 ) {
-	if (!recommended) {
-		if (description) {
-			pushWrappedText(
-				lines,
-				description,
-				width,
-				theme,
-				"muted",
-				"     ",
-				"     "
-			);
-		}
-		return;
-	}
-
-	const indent = "     ";
-	const text =
-		theme.fg("warning", UI_TEXT.recommendedMarker) +
-		(description ? theme.fg("muted", ` | ${description}`) : "");
-	for (const line of wrapTextWithAnsi(
-		text,
-		Math.max(1, width - visibleWidth(indent))
-	)) {
-		lines.push(truncateToWidth(`${indent}${line}`, width));
+	if (description) {
+		pushWrappedText(
+			lines,
+			description,
+			width,
+			theme,
+			"muted",
+			"      ",
+			"      "
+		);
 	}
 }

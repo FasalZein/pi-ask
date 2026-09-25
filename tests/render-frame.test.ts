@@ -225,12 +225,13 @@ test("footer hints wrap into exact lines on narrow screens", () => {
 		editor: mockEditor(),
 	});
 
-	assert.deepEqual(lines.slice(-6, -1), [
-		" Space toggle",
-		"t question type",
-		"Enter continue",
-		"N/Shift+N note",
-		"Esc dismiss · ? settings",
+	assert.deepEqual(lines.slice(-7, -1), [
+		" ↑↓ move",
+		" Space/1-9 toggle",
+		" Tab question",
+		" Enter continue",
+		" N/Shift+N note · T type",
+		" Esc dismiss · ? settings",
 	]);
 });
 
@@ -254,11 +255,13 @@ test("footer keeps earlier hint chunk on the first wrapped line", () => {
 		editor: mockEditor(),
 	});
 
-	assert.deepEqual(lines.slice(-5, -1), [
-		"Enter confirm",
-		"N/Shift+N note",
-		"Esc dismiss",
-		"? settings",
+	assert.deepEqual(lines.slice(-7, -1), [
+		" ↑↓ move · 1-9 pick",
+		" Tab question",
+		" Enter confirm",
+		" N/Shift+N note",
+		" T type · Esc dismiss",
+		" ? settings",
 	]);
 });
 

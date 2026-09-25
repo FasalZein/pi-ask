@@ -224,7 +224,9 @@ function wrapDelimitedFooterHints(footer: string, width: number): string[] {
 			return lines;
 		}
 
-		const wrappedChunk = wrapText(chunk, width);
+		const wrappedChunk = wrapText(chunk, Math.max(1, width - 1)).map(
+			(line) => ` ${line}`
+		);
 		if (!current) {
 			lines.push(...wrappedChunk);
 			return lines;

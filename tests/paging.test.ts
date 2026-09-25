@@ -51,7 +51,7 @@ test("18-row ask keeps framing and focused option, with counts for hidden option
 	assert.ok(initial[3]?.includes("Review"));
 	assert.ok(initial.at(-2)?.includes("settings"));
 	assert.ok(initial.at(-1)?.includes("─"));
-	assert.ok(initial.join("\n").includes("↓ 11 more options below"));
+	assert.ok(initial.join("\n").includes("↓ 12 more options below"));
 	for (let index = 0; index < 11; index++) {
 		state = moveOption(state, 1);
 	}
@@ -64,8 +64,8 @@ test("18-row ask keeps framing and focused option, with counts for hidden option
 		viewport,
 	});
 	assert.equal(lines.length, 18);
-	assert.ok(lines.join("\n").includes("❯ 12. Option 12"));
-	assert.ok(lines.join("\n").includes("↑ 4 more options above"));
+	assert.ok(lines.join("\n").includes("▶ 12. Option 12"));
+	assert.ok(lines.join("\n").includes("↑ 7 more options above"));
 	assert.ok(lines.join("\n").includes("↓ 5 more options below"));
 	assert.ok(lines.at(-2)?.includes("settings"));
 });
@@ -103,7 +103,7 @@ test("a wrapped focused option remains fully visible", () => {
 		viewport,
 	});
 	assert.equal(lines.length, 18);
-	assert.ok(lines.join("\n").includes("❯ 9. Option 9"));
+	assert.ok(lines.join("\n").includes("▶ 9. Option 9"));
 	assert.ok(lines.join("\n").includes("Description 9"));
 	assert.ok(lines.at(-2)?.includes("settings"));
 });
@@ -304,12 +304,12 @@ test("flow component pages by visible row height and accepts pi move aliases wit
 	assert.ok(component);
 	component.render(80);
 	component.handleInput("j");
-	assert.ok(component.render(80).join("\n").includes("❯ 2. Option 2"));
+	assert.ok(component.render(80).join("\n").includes("▶ 2. Option 2"));
 	component.handleInput("z");
-	assert.ok(component.render(80).join("\n").includes("❯ 2. Option 2"));
+	assert.ok(component.render(80).join("\n").includes("▶ 2. Option 2"));
 	component.handleInput("\n");
 	const page = component.render(80).join("\n");
-	assert.ok(page.includes("❯ 10. Option 10"));
+	assert.ok(page.includes("▶ 7. Option 7"));
 	assert.match(page, ABOVE_OPTIONS);
 	assert.ok(page.includes("Ctrl+J"));
 	component.handleInput("k");
@@ -401,7 +401,7 @@ test("long preview has its own bounded window and scroll offset", () => {
 		previewScrollTop: 100,
 	});
 	assert.equal(short.length, 18);
-	assert.ok(short.join("\n").includes("❯ 1. A"));
+	assert.ok(short.join("\n").includes("▶ 1. A"));
 	assert.ok(short.join("\n").includes("line 30"));
 	assert.ok(short.join("\n").includes("Ctrl+H"));
 	assert.ok(short.at(-2)?.includes("settings"));
@@ -520,7 +520,7 @@ test("preview scroll keys move preview text without changing the focused option"
 	const next = component.render(80).join("\n");
 	assert.ok(next.includes("line 2"));
 	assert.ok(!next.includes("line 1 "));
-	assert.ok(next.includes("❯ 1. A"));
+	assert.ok(next.includes("▶ 1. A"));
 	component.handleInput("[");
 	assert.ok(component.render(80).join("\n").includes("line 1"));
 	for (let index = 0; index < 100; index++) {
@@ -530,7 +530,7 @@ test("preview scroll keys move preview text without changing the focused option"
 	assert.ok(end.includes("line 30"));
 	assert.ok(!end.includes("line 21 "));
 	component.handleInput("[");
-	assert.ok(component.render(80).join("\n").includes("line 22"));
+	assert.ok(component.render(80).join("\n").includes("line 23"));
 	component.handleInput("\u0003");
 	assert.equal((await flow).cancelled, true);
 });

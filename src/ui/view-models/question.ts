@@ -114,7 +114,7 @@ function getOptionPointer(option: AskDisplayOption, selected: boolean): string {
 	if (option.isFreeformOnlyOption) {
 		return "";
 	}
-	return selected ? "❯ " : "  ";
+	return selected ? " ▶ " : "   ";
 }
 
 function buildOptionDetailModel(
@@ -188,7 +188,7 @@ function getOptionPrefix(
 	if (questionType !== "multi") {
 		return "";
 	}
-	return `[${answered ? "x" : " "}] `;
+	return `[${answered ? "✓" : " "}] `;
 }
 
 function getOptionColor(
