@@ -1,3 +1,40 @@
+# [1.3.0](https://github.com/FasalZein/pi-ask/compare/v1.2.0...v1.3.0) (2026-09-25)
+
+First release of the fork `@fasalzein/pi-ask`. It is installed from GitHub (`pi install git:github.com/FasalZein/pi-ask`), not from npm. It covers every change since upstream `@eko24ive/pi-ask` 1.2.0.
+
+### BREAKING CHANGES
+
+* **Package name:** the package is `@fasalzein/pi-ask`. Replace `npm:@eko24ive/pi-ask` with `git:github.com/FasalZein/pi-ask` in pi settings. Do not load both: the first `ask_user` registration wins. ([#8](https://github.com/FasalZein/pi-ask/issues/8))
+* **Config file:** settings save to `~/.pi/agent/extensions/pi-ask.json`. If that file is missing, `eko24ive-pi-ask.json` loads as a read-only fallback; it is never modified. ([#8](https://github.com/FasalZein/pi-ask/issues/8))
+* **Bridge channels:** remote event names change from `@eko24ive/pi-ask:*` to `pi-ask:started`, `pi-ask:completed`, `pi-ask:submit`, and `pi-ask:submit-result`. Update any bridge extension. ([#8](https://github.com/FasalZein/pi-ask/issues/8))
+* **Bundled skill removed:** the package no longer ships the `ask-user` skill. ([#48](https://github.com/FasalZein/pi-ask/issues/48))
+
+### Features
+
+* compact prompt mode (`PI_ASK_PROMPT_MODE=compact`): shorter tool text, follow-up rules in the tool text, option labels as identifiers with derived values, at most four questions per ask, and configuration guidance only when the prompt mentions pi-ask settings ([#13](https://github.com/FasalZein/pi-ask/issues/13), [#17](https://github.com/FasalZein/pi-ask/issues/17), [#30](https://github.com/FasalZein/pi-ask/issues/30), [#33](https://github.com/FasalZein/pi-ask/issues/33), [#38](https://github.com/FasalZein/pi-ask/issues/38), [#47](https://github.com/FasalZein/pi-ask/issues/47)). Full mode stays the default and keeps the upstream 1.2.0 text.
+* refreshed TUI: question screen, progress header and text tabs, paged navigation, review summary with question rows, pi border and editor theme tokens, capped preview text with scroll counts, and mouse wheel scrolling ([#15](https://github.com/FasalZein/pi-ask/issues/15), [#21](https://github.com/FasalZein/pi-ask/issues/21), [#22](https://github.com/FasalZein/pi-ask/issues/22), [#23](https://github.com/FasalZein/pi-ask/issues/23), [#25](https://github.com/FasalZein/pi-ask/issues/25), [#26](https://github.com/FasalZein/pi-ask/issues/26), [#27](https://github.com/FasalZein/pi-ask/issues/27))
+* RPC mode opens pi dialogs and emits bridge lifecycle events ([#14](https://github.com/FasalZein/pi-ask/issues/14))
+* live partial answers through tool updates while the ask flow is open ([#19](https://github.com/FasalZein/pi-ask/issues/19))
+* waiting indicator in the footer and the terminal title ([#18](https://github.com/FasalZein/pi-ask/issues/18))
+* cancel reasons in ask results ([#9](https://github.com/FasalZein/pi-ask/issues/9))
+* transcript markers for ask entries and labels in the session tree ([#6](https://github.com/FasalZein/pi-ask/issues/6), [#35](https://github.com/FasalZein/pi-ask/issues/35))
+* `/skill:` completion in ask editors ([#29](https://github.com/FasalZein/pi-ask/issues/29))
+* configurable replay shortcut for `/ask:replay`, default `Ctrl+Shift+R` ([#36](https://github.com/FasalZein/pi-ask/issues/36))
+
+### Bug Fixes
+
+* `/answer` retries a deferred extraction response ([#4](https://github.com/FasalZein/pi-ask/issues/4))
+* notification commands run through `pi.exec` ([#5](https://github.com/FasalZein/pi-ask/issues/5))
+* the settings overlay fits the terminal ([#7](https://github.com/FasalZein/pi-ask/issues/7))
+* recovered asks pair with their request context, also after `/tree` navigation ([#10](https://github.com/FasalZein/pi-ask/issues/10), [#12](https://github.com/FasalZein/pi-ask/issues/12))
+* aborted ask flows close, and recovery survives quit ([#11](https://github.com/FasalZein/pi-ask/issues/11))
+* guard the private pi-tui autocomplete trigger ([#29](https://github.com/FasalZein/pi-ask/issues/29))
+* compact mode keeps `ask_user` active in print and JSON sessions, so a headless model gets the "Needs user input" result and stops ([#54](https://github.com/FasalZein/pi-ask/issues/54))
+
+### Compatibility
+
+* Supports pi 0.84.0 and later; built against pi 0.87.1. CI tests the 0.84.1 floor ([#3](https://github.com/FasalZein/pi-ask/issues/3)).
+
 # [1.2.0](https://github.com/eko24ive/pi-ask/compare/v1.1.0...v1.2.0) (2026-08-16)
 
 
