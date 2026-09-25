@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Editor } from "@earendil-works/pi-tui";
 import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
 import { getAskConfigStore } from "../src/config/store.ts";
@@ -10,6 +11,13 @@ import {
 } from "../src/state/transitions.ts";
 import { runAskFlow } from "../src/ui/controller.ts";
 import { getInputCommand } from "../src/ui/input.ts";
+
+const unusedExec: ExtensionAPI["exec"] = async () => ({
+	stdout: "",
+	stderr: "",
+	code: 0,
+	killed: false,
+});
 
 function inputState() {
 	let state = createInitialState({
@@ -307,7 +315,8 @@ test("custom editor submit key controls actual editor submission", async () => {
 					options: [{ value: "a", label: "A" }],
 				},
 			],
-		}
+		},
+		{ exec: unusedExec }
 	);
 
 	await new Promise((resolve) => setImmediate(resolve));
@@ -385,7 +394,8 @@ test("ask flow forwards focus and invalidation to its editor", async () => {
 						options: [{ value: "a", label: "A" }],
 					},
 				],
-			}
+			},
+			{ exec: unusedExec }
 		);
 
 		await new Promise((resolve) => setImmediate(resolve));

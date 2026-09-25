@@ -1,4 +1,7 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { Editor, type EditorTheme } from "@earendil-works/pi-tui";
 import type { AskConfig } from "../config/schema.ts";
 import { getAskConfigStore } from "../config/store.ts";
@@ -67,12 +70,14 @@ type Keybindings = CustomCallbackArgs[2];
 type Done = (result: AskResult) => void;
 interface AskFlowOptions {
 	allowFreeform?: boolean;
+	exec: ExtensionAPI["exec"];
 	presentSingleAsMulti?: boolean;
 	remote?: {
 		runtime: RemoteAskRuntime;
 		source: RemoteAskSource;
 		toolCallId?: string;
 	};
+	signal?: AbortSignal;
 }
 
 type AskFlowParams = AskParams &
@@ -90,6 +95,7 @@ interface AskFlowController {
 	dismissNotice?: string;
 	done: Done;
 	editor: Editor;
+	flowOptions: AskFlowOptions;
 	pendingQuestionTypeChangeQuestionId?: string;
 	pendingReviewShortcutActionIndex?: number;
 	remoteFlow?: RemoteAskFlowHandle;
@@ -104,7 +110,7 @@ interface AskFlowController {
 export async function runAskFlow(
 	ctx: ExtensionContext,
 	params: AskParams,
-	options: AskFlowOptions = {}
+	options: AskFlowOptions
 ): Promise<AskResult> {
 	const store = getAskConfigStore();
 	const { config, notice } = await store.ensureLoaded();
@@ -144,6 +150,7 @@ function createAskFlowController(
 		config: params.config,
 		configNotice: params.configNotice,
 		ctx: params.ctx,
+		flowOptions: params.flowOptions,
 		dismissNotice: undefined,
 		done,
 		editor: createEditor(tui, theme, params.cwd),
@@ -567,7 +574,9 @@ async function notifyCurrentQuestion(
 	}
 	await notifyQuestionWaiting(
 		controller.config,
-		createQuestionWaitingNotification(question)
+		createQuestionWaitingNotification(question),
+		controller.flowOptions.exec,
+		controller.flowOptions.signal
 	);
 }
 

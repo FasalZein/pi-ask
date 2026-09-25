@@ -282,7 +282,7 @@ async function runReplayCommand(
 }
 
 async function runAskAndSendSubmittedResult(
-	pi: Pick<ExtensionAPI, "sendUserMessage">,
+	pi: Pick<ExtensionAPI, "sendUserMessage" | "exec">,
 	ctx: ExtensionContext,
 	params: AskParams,
 	options: {
@@ -293,6 +293,7 @@ async function runAskAndSendSubmittedResult(
 ): Promise<void> {
 	const result = await withHiddenWorkingRow(ctx, () =>
 		runAskFlow(ctx, params, {
+			exec: pi.exec,
 			allowFreeform: options.allowFreeform,
 			remote: options.remoteAsk
 				? { runtime: options.remoteAsk, source: options.remoteSource }

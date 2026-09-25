@@ -49,10 +49,10 @@ export function registerAskTool(
 }
 
 async function executeAskTool(
-	pi: Pick<ExtensionAPI, "appendEntry">,
+	pi: Pick<ExtensionAPI, "appendEntry" | "exec">,
 	toolCallId: string,
 	params: AskParams,
-	_signal: AbortSignal | undefined,
+	signal: AbortSignal | undefined,
 	_onUpdate: unknown,
 	ctx: ExtensionContext,
 	remoteAsk?: RemoteAskRuntime
@@ -75,6 +75,8 @@ async function executeAskTool(
 	ctx.ui.setWorkingVisible(false);
 	try {
 		const result = await runAskFlow(ctx, params, {
+			exec: pi.exec,
+			signal,
 			remote: remoteAsk
 				? { runtime: remoteAsk, source: "tool", toolCallId }
 				: undefined,

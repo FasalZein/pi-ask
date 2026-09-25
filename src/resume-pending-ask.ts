@@ -53,7 +53,7 @@ export function registerPendingAskResume(
 }
 
 async function reopenPendingAsk(
-	pi: Pick<ExtensionAPI, "appendEntry" | "sendUserMessage">,
+	pi: Pick<ExtensionAPI, "appendEntry" | "sendUserMessage" | "exec">,
 	ctx: ExtensionContext,
 	pendingAsk: PendingAskToolCall,
 	remoteAsk: RemoteAskRuntime
@@ -67,6 +67,7 @@ async function reopenPendingAsk(
 	let result: Awaited<ReturnType<typeof runAskFlow>>;
 	try {
 		result = await runAskFlow(ctx, pendingAsk.params, {
+			exec: pi.exec,
 			remote: {
 				runtime: remoteAsk,
 				source: "ask:resume",

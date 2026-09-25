@@ -276,7 +276,7 @@ The ask flow subscribes to runtime settings updates while open. In practice, thi
 
 ## Notifications
 
-When enabled, pi-ask emits one best-effort external notification per ask session after the ask UI opens and waits for input. The default title is `pi ask`; the message is `Question waiting: <label or prompt>`. Channels run in configured order and failures never fail or cancel the ask flow.
+When enabled, pi-ask emits one best-effort external notification per ask session after the ask UI opens and waits for input. The default title is `pi ask`; the message is `Question waiting: <label or prompt>`. Channels run in configured order and failures never fail or cancel the ask flow. Command channels run through Pi with shell syntax, a 5-second timeout, and the ask tool abort signal.
 
 ## Remote inter-extension events
 
