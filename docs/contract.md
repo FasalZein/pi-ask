@@ -6,7 +6,7 @@ This document defines the stable external behavior. It does not explain internal
 
 ## Prompt mode
 
-The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, empty, and `full` keep the upstream v1.2.0 description, guidelines, and parameter schema. `compact` uses a shorter description, one guideline, and an instructional `recommended` description; all other parameter descriptions and the tool snippet remain unchanged. Unknown values use full mode and log one warning. The tool definition does not change between turns. Compact mode appends a follow-up hint to submitted and elaborated tool-result text, including recovery and command-flow deliveries. It does not append the hint to cancelled, invalid, UI-unavailable, or aborted results. The hint does not change transcript rendering. Conditional configuration guidance is active in compact mode.
+The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, empty, and `full` keep the upstream v1.2.0 description, guidelines, and parameter schema. `compact` uses a shorter description, two guidelines, and instructional `questions`, option `value`, and `recommended` descriptions. Its question schema permits up to four questions and makes option `value` optional. The tool snippet and other parameter descriptions remain unchanged. Unknown values use full mode and log one warning. The tool definition does not change between turns. Compact mode places follow-up rules in tool text once. No result carries a follow-up hint, including recovery and command-flow deliveries. Conditional configuration guidance is active in compact mode.
 
 ## Input
 
@@ -30,13 +30,15 @@ The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, e
 }
 ```
 
+This input shape shows full mode. In compact mode, option `value` is optional in the tool schema; the tool fills it before execution.
+
 ## Input rules
 
 - at least one question is required
 - every question must have non-empty trimmed `id` and `prompt`
 - every question must have at least one option
 - question ids must be unique within one tool call
-- option `value`s must be unique within a question
+- option `value`s must be unique within a question; in compact mode, missing values derive from label slugs and avoid collisions with explicit and derived values in that question
 - blank optional `title`, question `label`, option `description`, and option `preview` fields are treated as omitted
 - question `label` falls back to `Q1`, `Q2`, ...
 - option `label` is required in the public schema; before schema validation, a missing or blank string label is derived from a non-empty `value` by replacing hyphens and underscores with spaces and capitalizing the first character
@@ -176,11 +178,10 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 
 ## Output rules
 
-- `cancelled: true` means the user dismissed the flow, the run was aborted, UI was unavailable, or the payload was invalid before UI opened; every cancelled result includes `cancelReason`: `user` for cancel or dismiss (including command flows), `aborted` for a tool run interrupted by its abort signal, `ui_unavailable` for non-interactive modes, or `invalid_input` for payload validation failures. An aborted tool result says exactly: `The ask_user form was closed because the run was aborted. No answers were collected.` It contains no answers or compact follow-up hint.
+- `cancelled: true` means the user dismissed the flow, the run was aborted, UI was unavailable, or the payload was invalid before UI opened; every cancelled result includes `cancelReason`: `user` for cancel or dismiss (including command flows), `aborted` for a tool run interrupted by its abort signal, `ui_unavailable` for non-interactive modes, or `invalid_input` for payload validation failures. An aborted tool result says exactly: `The ask_user form was closed because the run was aborted. No answers were collected.` It contains no answers.
 - semantically invalid payloads that reach tool execution return `error.kind === "invalid_input"` with structured `issues` and a transcript-friendly `Invalid ask_user payload:` message; their rendered status is `Invalid tool payload`
 - payloads missing schema-required fields fail Pi's schema validation before tool execution and use Pi's standard tool-error result without structured `details`
 - `mode: "submit"` is normal completion; `mode: "elaborate"` means the user asked the agent to continue with follow-up clarification based on notes
-- in compact prompt mode, submitted and elaborated model-facing `content` ends with a new line: `Follow-up: if a choice is still needed, ask with another \`ask_user\` call, not plain-text choices in chat. When these answers narrow the branch, bundle the next 2-3 related decisions into one call; ask one at a time only when the next question depends on the previous answer.`
 - unanswered questions without notes are omitted from `answers`; note-only entries remain in `answers` to carry their notes, but all non-cancelled submitted result text includes `<label>: (no answer)` in summary mode and `? <label>: (no answer)` in transcript rendering
 - in `mode: "elaborate"`, `answers` contains only committed answers; note-only entries move to `elaboration.items`
 - `continuation.strategy === "refine_only"` means the next ask should refine the current flow rather than restart it
@@ -302,7 +303,7 @@ In compact mode, pi-ask leaves the system prompt unchanged. When the expanded us
 
 The rich ask flow uses `ctx.ui.custom()` only in TUI mode. In RPC mode with a UI, pi-ask uses pi dialogs: single and preview options show labels and preview text before selection, multi options use repeated checkbox-prefixed selects with Done, and custom answers use input. The last select offers Submit or Cancel. Dismissing any dialog cancels as `user`; aborting cancels as `aborted`. RPC does not offer notes or Elaborate. Every dialog receives an abort signal. Print, JSON, and contexts without an interactive UI keep the existing `Needs user input: ask_user requires interactive TUI mode.` content and `cancelReason: "ui_unavailable"` details.
 
-The public tool schema requires question `id` and `prompt` plus option `value` and `label`, and it restricts question `type` to `single`, `multi`, or `preview`, so malformed structural fields fail before execution. The tool still validates trimmed text, uniqueness, option counts, and preview requirements during execution and returns structured issues for those failures. Result rendering falls back to Pi's raw tool-error text when schema validation prevents execution.
+The full-mode public schema requires question `id` and `prompt` plus option `value` and `label`. The compact-mode schema requires `id`, `prompt`, and `label`, caps questions at four, and fills a missing option `value` from a slug of its label before schema validation. Derived values are unique within each question, including against explicit values. For example, `Offline only` becomes `offline-only`; a collision gets a numeric suffix. Blank explicit values remain invalid. Both schemas restrict question `type` to `single`, `multi`, or `preview`, so malformed structural fields fail before execution. The tool still validates trimmed text, uniqueness, option counts, and preview requirements during execution and returns structured issues for those failures. Result rendering falls back to Pi's raw tool-error text when schema validation prevents execution.
 
 The ask flow subscribes to runtime settings updates while open. In practice, this means changing `Auto-submit when answered without notes`, `Confirm dismiss when dirty`, `Double-press review shortcuts`, `Notifications`, `Show footer hints`, resetting config to defaults, or reloading config-backed keymaps can affect the in-progress ask flow immediately instead of only future asks when the change is saved or otherwise applied in memory. Load-time migrations and invalid config handling do not rewrite, rename, or back up the config file; invalid files load defaults for the session and show a notice. `Present single-select as multi-select` is applied when an ask flow is created and does not rewrite question semantics for an already-open flow; use `main.changeQuestionType` for live per-question changes.
 

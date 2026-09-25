@@ -51,7 +51,8 @@ export function registerAskTool(
 				: [...ASK_TOOL_PROMPT_GUIDELINES],
 		parameters:
 			promptMode === "compact" ? CompactAskParamsSchema : AskParamsSchema,
-		prepareArguments: (args) => prepareAskParams(args) as AskParams,
+		prepareArguments: (args) =>
+			prepareAskParams(args, promptMode === "compact") as AskParams,
 		execute: (toolCallId, params, signal, onUpdate, ctx) =>
 			executeAskTool(
 				pi,

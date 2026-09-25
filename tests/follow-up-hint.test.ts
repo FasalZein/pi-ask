@@ -45,9 +45,6 @@ console.log(JSON.stringify(Object.fromEntries(Object.entries(cases).map(([name, 
 }]))));
 `;
 
-const hint =
-	"Follow-up: if a choice is still needed, ask with another `ask_user` call, not plain-text choices in chat. When these answers narrow the branch, bundle the next 2-3 related decisions into one call; ask one at a time only when the next question depends on the previous answer.";
-
 function run(mode: string) {
 	const env = { ...process.env };
 	env.PI_ASK_PROMPT_MODE = mode;
@@ -68,16 +65,13 @@ function run(mode: string) {
 	>;
 }
 
-test("only compact submitted and elaborated tool results carry the follow-up hint", () => {
+test("compact and full results contain the same answers without a follow-up hint", () => {
 	const full = run("full");
 	const compact = run("compact");
 	assert.equal(full.submitted.content, "Goal: Speed");
 	assert.equal(full.elaborated.mode, "elaborate");
-	assert.equal(compact.submitted.content, `Goal: Speed\n${hint}`);
-	assert.equal(
-		compact.elaborated.content,
-		`${full.elaborated.content}\n${hint}`
-	);
+	assert.equal(compact.submitted.content, full.submitted.content);
+	assert.equal(compact.elaborated.content, full.elaborated.content);
 	for (const kind of ["cancelled", "invalid", "unavailable", "aborted"]) {
 		assert.equal(compact[kind].content, full[kind].content, kind);
 		assert.equal(compact[kind].cancelled, true, kind);

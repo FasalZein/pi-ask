@@ -45,16 +45,21 @@ export const COMPACT_TOOL_DESCRIPTION =
 	"Interactive clarification tool for cases where the next step depends on user preferences, missing requirements, or choosing between multiple valid directions. Ask a short structured interview, collect normalized answers, and continue using those answers explicitly instead of guessing.";
 export const COMPACT_TOOL_PROMPT_GUIDELINES = [
 	"Use `ask_user` before preference-sensitive decisions (scope, tone, UX, naming, architecture, docs, implementation direction), or when several valid directions exist; ask 1-3 concise questions instead of choosing one path yourself.",
+	"If a choice is still needed, use another structured `ask_user` call, not plain-text choices in chat.",
 ] as const;
 export const COMPACT_RECOMMENDED_DESCRIPTION =
 	"Optional. Set true on an option you recommend for a grounded reason; state the reason in `description`.";
-export const COMPACT_FOLLOW_UP_HINT =
-	"Follow-up: if a choice is still needed, ask with another `ask_user` call, not plain-text choices in chat. When these answers narrow the branch, bundle the next 2-3 related decisions into one call; ask one at a time only when the next question depends on the previous answer.";
-
 const compactOptionSchema = {
 	...AskOptionSchema,
+	required: ["label"],
 	properties: {
 		...AskOptionSchema.properties,
+		value: Type.Optional(
+			Type.String({
+				description:
+					"Optional machine-readable value returned for this option in the result; when omitted, a unique value is derived from the label.",
+			})
+		),
 		recommended: Type.Optional(
 			Type.Boolean({ description: COMPACT_RECOMMENDED_DESCRIPTION })
 		),
@@ -76,6 +81,9 @@ export const CompactAskParamsSchema = {
 		...AskParamsSchema.properties,
 		questions: {
 			...AskParamsSchema.properties.questions,
+			description:
+				"Questions to ask in the interactive clarification flow. When prior answers narrow the branch, bundle the next 2-3 related decisions into one call; ask one at a time only when the next question depends on the previous answer.",
+			maxItems: 4,
 			items: compactQuestionSchema,
 		},
 	},

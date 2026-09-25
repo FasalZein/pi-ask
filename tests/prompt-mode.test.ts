@@ -10,7 +10,7 @@ import askExtension from "./src/index.ts";
 import { successfulResponse } from "./src/ask-tool-helpers.ts";
 const tools = [];
 const pi = {
-  on() {}, registerCommand() {}, registerEntryRenderer() {},
+  on() {}, registerCommand() {}, registerEntryRenderer() {}, appendEntry() {}, getCommands() { return []; },
   registerTool(tool) { tools.push(tool); },
   events: { on() {}, emit() {} },
 };
@@ -18,7 +18,15 @@ askExtension(pi);
 process.env.PI_ASK_PROMPT_MODE = "compact";
 askExtension(pi);
 const submitted = { cancelled: false, mode: "submit", questions: [], answers: {} };
-console.log(JSON.stringify({ tools: tools.map(({ description, promptSnippet, promptGuidelines, parameters }) => ({ description, promptSnippet, promptGuidelines, parameters })), result: successfulResponse(submitted).content[0].text }));
+const raw = { questions: [{ id: "q", prompt: "Pick", options: [
+  { label: "Offline only" }, { label: "Offline only" },
+  { value: "offline-only-2", label: "Explicit" }, { label: "Offline only" },
+] }] };
+const prepared = tools[0].prepareArguments(raw);
+const response = await tools[0].execute("missing-value", prepared, undefined, undefined, { mode: "print" });
+const blank = tools[0].prepareArguments({ questions: [{ id: "q", prompt: "Pick", options: [{ value: "", label: "Blank value" }] }] });
+const blankResponse = await tools[0].execute("blank-value", blank, undefined, undefined, { mode: "print" });
+console.log(JSON.stringify({ tools: tools.map(({ description, promptSnippet, promptGuidelines, parameters }) => ({ description, promptSnippet, promptGuidelines, parameters })), result: successfulResponse(submitted).content[0].text, prepared, response: { text: response.content[0].text, details: response.details }, blankResponse: blankResponse.content[0].text }));
 `;
 
 function registeredText(mode: string | undefined) {
@@ -48,6 +56,16 @@ const compactDescription =
 	"Interactive clarification tool for cases where the next step depends on user preferences, missing requirements, or choosing between multiple valid directions. Ask a short structured interview, collect normalized answers, and continue using those answers explicitly instead of guessing.";
 const compactGuideline =
 	"Use `ask_user` before preference-sensitive decisions (scope, tone, UX, naming, architecture, docs, implementation direction), or when several valid directions exist; ask 1-3 concise questions instead of choosing one path yourself.";
+const followUpGuideline =
+	"If a choice is still needed, use another structured `ask_user` call, not plain-text choices in chat.";
+const questionsDescription =
+	"Questions to ask in the interactive clarification flow. When prior answers narrow the branch, bundle the next 2-3 related decisions into one call; ask one at a time only when the next question depends on the previous answer.";
+const valueDescription =
+	"Optional machine-readable value returned for this option in the result; when omitted, a unique value is derived from the label.";
+const derivedValuePattern = /Offline only \[offline-only\]/;
+const blankValuePattern = /option 1: value is required/;
+const missingValuePattern =
+	/questions\[0\]\.options\[0\]\.value: Question 1, option 1: value is required/;
 const recommendation =
 	"Optional. Set true on an option you recommend for a grounded reason; state the reason in `description`.";
 
@@ -60,12 +78,29 @@ test("prompt mode selects fixed compact text at load and preserves all other sch
 	assert.deepEqual(compact.tools[0], compact.tools[1]);
 	const tool = compact.tools[0];
 	assert.equal(tool.description, compactDescription);
-	assert.deepEqual(tool.promptGuidelines, [compactGuideline]);
+	assert.deepEqual(tool.promptGuidelines, [
+		compactGuideline,
+		followUpGuideline,
+	]);
+	assert.equal(
+		tool.parameters.properties.questions.description,
+		questionsDescription
+	);
+	assert.equal(tool.parameters.properties.questions.maxItems, 4);
 	assert.equal(tool.promptSnippet, full.tools[0].promptSnippet);
 	const option =
 		tool.parameters.properties.questions.items.properties.options.items;
 	assert.equal(option.properties.recommended.description, recommendation);
+	assert.equal(option.properties.value.description, valueDescription);
+	assert.deepEqual(option.required, ["label"]);
 	const unchanged = structuredClone(tool.parameters);
+	unchanged.properties.questions.description =
+		full.tools[0].parameters.properties.questions.description;
+	Reflect.deleteProperty(unchanged.properties.questions, "maxItems");
+	unchanged.properties.questions.items.properties.options.items.required =
+		full.tools[0].parameters.properties.questions.items.properties.options.items.required;
+	unchanged.properties.questions.items.properties.options.items.properties.value =
+		full.tools[0].parameters.properties.questions.items.properties.options.items.properties.value;
 	unchanged.properties.questions.items.properties.options.items.properties.recommended.description =
 		full.tools[0].parameters.properties.questions.items.properties.options.items.properties.recommended.description;
 	assert.deepEqual(unchanged, full.tools[0].parameters);
@@ -87,6 +122,48 @@ test("prompt mode selects fixed compact text at load and preserves all other sch
 		}),
 		false
 	);
+});
+
+test("compact schema limits questions to four without limiting full mode", () => {
+	const questions = Array.from({ length: 5 }, (_, index) => ({
+		id: `q${index}`,
+		prompt: "Pick",
+		options: [{ label: "Offline only" }],
+	}));
+	assert.equal(
+		Value.Check(compact.tools[0].parameters, {
+			questions: questions.slice(0, 4),
+		}),
+		true
+	);
+	assert.equal(Value.Check(compact.tools[0].parameters, { questions }), false);
+	assert.equal(
+		Value.Check(full.tools[0].parameters, {
+			questions: questions.map((question) => ({
+				...question,
+				options: [{ value: "offline", label: "Offline only" }],
+			})),
+		}),
+		true
+	);
+});
+
+test("compact preparation fills only missing values and avoids explicit and derived collisions", () => {
+	const options = compact.prepared.questions[0].options;
+	assert.deepEqual(
+		options.map((option: { value: string }) => option.value),
+		["offline-only", "offline-only-3", "offline-only-2", "offline-only-4"]
+	);
+	assert.equal(
+		Value.Check(compact.tools[0].parameters, compact.prepared),
+		true
+	);
+	assert.equal(compact.response.details.error, undefined);
+	assert.match(compact.response.text, derivedValuePattern);
+	assert.match(compact.blankResponse, blankValuePattern);
+	assert.equal(full.prepared.questions[0].options[0].value, undefined);
+	assert.equal(Value.Check(full.tools[0].parameters, full.prepared), false);
+	assert.match(full.response.text, missingValuePattern);
 });
 
 test("unset, empty, and full preserve full text; unknown mode warns once", () => {
@@ -121,13 +198,12 @@ test("compact rule inventory has a single observed home for each rule", () => {
 	}
 	collect(tool.parameters, "parameters");
 	const homes: Record<string, string> = {
-		guideline: tool.promptGuidelines[0],
-		followUp: compact.result,
+		guideline: tool.promptGuidelines.join(" "),
 		config: PI_ASK_CONFIG_PROMPT,
 		...descriptions,
 	};
 	// Inventory from the compact-mode rule allocation in spec #1.
-	// The result home is observed through a submitted response; the config home is its trigger text.
+	// The config home is its trigger text.
 	const rules: [string, string, string][] = [
 		["G1", "guideline", "before preference-sensitive decisions"],
 		["G2", "guideline", "1-3 concise questions"],
@@ -141,18 +217,22 @@ test("compact rule inventory has a single observed home for each rule", () => {
 		],
 		["G7", "parameters.questions[].type", "Question type"],
 		["G8", "parameters.questions[].type", "Use `preview` only"],
-		["G9", "followUp", "another `ask_user` call, not plain-text choices"],
-		["G10", "followUp", "bundle the next 2-3 related decisions"],
+		[
+			"G9",
+			"guideline",
+			"another structured `ask_user` call, not plain-text choices",
+		],
+		["G10", "parameters.questions", "bundle the next 2-3 related decisions"],
 		[
 			"G11",
-			"followUp",
+			"parameters.questions",
 			"ask one at a time only when the next question depends",
 		],
 		["D1", "parameters.questions[].prompt", "Required direct question"],
 		[
 			"D2",
 			"parameters.questions[].options[].value",
-			"Required machine-readable value",
+			"unique value is derived from the label",
 		],
 		[
 			"D3",
