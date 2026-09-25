@@ -27,6 +27,10 @@ I value contributions and will do my best to credit the people who help, whether
 
 ## Install
 
+Requires `@earendil-works/pi-*` 0.84.0 or later. CI tests compatibility with pi 0.84.1 and 0.87.1.
+
+To check the 0.84.1 floor locally without changing the main lockfile, run `pnpm run check:pi-floor`.
+
 ```bash
 pi install npm:@eko24ive/pi-ask
 ```
