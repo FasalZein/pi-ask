@@ -314,6 +314,7 @@ See [`remote-events.md`](remote-events.md) for payload shapes, examples, and a l
 - because the interrupted `execute` promise no longer exists, submit sends the result with the same user-message semantics as replay commands
 - submit and cancel both append `ask:pending-dismissed`, which prevents another automatic reopen; `/ask:replay` still works
 - recovered flows emit remote lifecycle events with source `ask:resume`
+- before each model request, a dismissed recovered `ask_user` call without a real tool result receives one non-error result directly after its assistant message: `This ask_user call was interrupted by a restart. Its outcome, if any, follows in a later user message.` This applies to both submitted and cancelled recovery; calls without a dismissal marker or with a real result are unchanged. The result is added only to the outgoing request, not to the session file.
 
 The fallback message includes normalized pending questions and options so the caller can re-ask them manually. `details.questions` still contains normalized question metadata, while `details.answers` stays empty until a user responds.
 

@@ -113,7 +113,9 @@ function resolvePendingAskParams(
 	return;
 }
 
-function getDismissedToolCallId(entry: SessionEntry): string | undefined {
+export function getDismissedToolCallId(
+	entry: SessionEntry
+): string | undefined {
 	if (
 		entry.type !== "custom" ||
 		entry.customType !== ASK_PENDING_DISMISSED_ENTRY_TYPE ||
