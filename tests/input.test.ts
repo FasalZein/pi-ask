@@ -522,3 +522,61 @@ test("review arrows focus answers, Enter opens the row, and number shortcuts ret
 		getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
 	}
 });
+
+test("ask editor uses pi's muted border theme when custom answer is open", async () => {
+	getAskConfigStore().setConfig({
+		...DEFAULT_ASK_CONFIG,
+		notifications: { ...DEFAULT_ASK_CONFIG.notifications, enabled: false },
+	});
+	const colors: string[] = [];
+	let component:
+		| { render(width: number): string[]; handleInput(data: string): void }
+		| undefined;
+	const flow = runAskFlow(
+		{
+			cwd: process.cwd(),
+			mode: "tui",
+			ui: {
+				custom(factory: (...args: unknown[]) => unknown) {
+					return new Promise((resolve) => {
+						component = factory(
+							{
+								terminal: { rows: 30, columns: 80 },
+								requestRender() {
+									// This fake does not schedule terminal paints.
+								},
+							},
+							{
+								fg(color: string, text: string) {
+									colors.push(color);
+									return text;
+								},
+								bg(_color: string, text: string) {
+									return text;
+								},
+								bold(text: string) {
+									return text;
+								},
+							},
+							{},
+							resolve
+						) as typeof component;
+					});
+				},
+			},
+		} as never,
+		{
+			questions: [
+				{ id: "q", prompt: "Pick", options: [{ value: "a", label: "A" }] },
+			],
+		},
+		{ exec: unusedExec }
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.ok(component);
+	component.handleInput("2");
+	component.render(80);
+	assert.ok(colors.includes("borderMuted"));
+	component.handleInput("\u0003");
+	await flow;
+});

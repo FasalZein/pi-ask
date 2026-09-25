@@ -369,3 +369,44 @@ test("footer hints can be hidden without affecting frame rendering", () => {
 	assert.equal(lines.join("\n").includes("? settings"), false);
 	assert.equal(lines.join("\n").includes("Enter confirm"), false);
 });
+
+// Border tokens are part of the pi-native chrome contract.
+test("frame rules use pi's border token without recoloring the title", () => {
+	const state = createInitialState({
+		title: "Demo",
+		questions: [
+			{ id: "q", prompt: "Pick", options: [{ value: "a", label: "A" }] },
+		],
+	});
+	const calls: [string, string][] = [];
+	const theme = {
+		fg(color: string, text: string) {
+			calls.push([color, text]);
+			return text;
+		},
+		bg(_color: string, text: string) {
+			return text;
+		},
+		bold(text: string) {
+			return text;
+		},
+	} as never;
+	const lines = renderAskScreen({
+		config: DEFAULT_ASK_CONFIG,
+		state,
+		theme,
+		width: 40,
+		editor: mockEditor(),
+	});
+	assert.equal(lines[0], "─".repeat(40));
+	assert.equal(lines.at(-1), "─".repeat(40));
+	assert.equal(calls.filter(([, text]) => text === "─".repeat(40)).length, 2);
+	assert.ok(
+		calls
+			.filter(([, text]) => text === "─".repeat(40))
+			.every(([color]) => color === "border")
+	);
+	assert.ok(
+		calls.some(([color, text]) => color === "accent" && text.includes("Demo"))
+	);
+});
