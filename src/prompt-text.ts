@@ -47,6 +47,8 @@ export const COMPACT_TOOL_PROMPT_GUIDELINES = [
 	"Use `ask_user` before preference-sensitive decisions (scope, tone, UX, naming, architecture, docs, implementation direction), or when several valid directions exist; ask 1-3 concise questions instead of choosing one path yourself.",
 	"If a choice is still needed, use another structured `ask_user` call, not plain-text choices in chat.",
 ] as const;
+export const COMPACT_ELABORATION_INSTRUCTION =
+	"First answer the user's note directly using the question and option context; re-ask only the affected question if a choice is still needed.";
 export const COMPACT_RECOMMENDED_DESCRIPTION =
 	"Optional. Set true on an option you recommend for a grounded reason; state the reason in `description`.";
 const compactOptionSchema = {

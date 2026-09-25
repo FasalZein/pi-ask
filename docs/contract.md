@@ -6,7 +6,7 @@ This document defines the stable external behavior. It does not explain internal
 
 ## Prompt mode
 
-The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, empty, and `full` keep the upstream v1.2.0 description, guidelines, and parameter schema. `compact` uses a shorter description, two guidelines, and instructional `questions`, option `value`, and `recommended` descriptions. Its question schema permits up to four questions and makes option `value` optional. The tool snippet and other parameter descriptions remain unchanged. Unknown values use full mode and log one warning. The tool definition does not change between turns. Compact mode places follow-up rules in tool text once. No result carries a follow-up hint, including recovery and command-flow deliveries. Conditional configuration guidance is active in compact mode.
+The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. Unset, empty, and `full` keep the upstream v1.2.0 description, guidelines, and parameter schema. `compact` uses a shorter description, two guidelines, and instructional `questions`, option `value`, and `recommended` descriptions. Its question schema permits up to four questions and makes option `value` optional. The tool snippet and other parameter descriptions remain unchanged. Unknown values use full mode and log one warning. The tool definition does not change between turns. Compact mode places general follow-up rules in tool text once. Results do not carry a general follow-up hint, including recovery and command-flow deliveries. Only compact elaborate results add one answer-first instruction to model-facing content: `First answer the user's note directly using the question and option context; re-ask only the affected question if a choice is still needed.` This instruction does not change transcript rendering or full-mode content. Conditional configuration guidance is active in compact mode.
 
 ## Input
 
@@ -206,7 +206,7 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 - every elaboration item includes the full normalized question and option list for that question so referential notes like `above` remain understandable to the agent
 - option-targeted elaboration items include the specific noted option plus whether it is currently selected
 - question-targeted elaboration items include whether the question already has a committed answer
-- `elaboration.instruction` tells the agent to answer the clarification directly first, then re-ask only the affected questions if a choice is still needed
+- `elaboration.instruction` tells the agent to answer the clarification directly first, then re-ask only the affected questions if a choice is still needed; in compact mode only, elaborate result `content` also carries the short answer-first instruction so the model receives it
 - after clarification, agents should prefer another structured follow-up over plain-text multiple choice when a decision is still unresolved
 - once prior answers narrow the branch, agents should bundle the next 2-3 related unresolved questions into one follow-up ask when possible, instead of using a long sequence of single-question asks
 - `elaboration` is only present when `mode === "elaborate"`

@@ -33,6 +33,7 @@ const cases = {
   submitted: await interactive(["1", "\\r"]),
   elaborated: await interactive(["1", "\\x1b[B", "\\r"]),
   cancelled: await interactive(["\\x1b"]),
+  cancelledElaborate: await interactive(["1", "\\x1b[B", "\\x1b", "\\x1b"]),
   invalid: await tool.execute("invalid", { questions: [] }, undefined, () => {}, { mode: "print" }),
   unavailable: await tool.execute("print", params, undefined, () => {}, { mode: "print" }),
   aborted: await tool.execute("abort", params, AbortSignal.abort(), () => {}, { mode: "tui" }),
@@ -65,14 +66,27 @@ function run(mode: string) {
 	>;
 }
 
-test("compact and full results contain the same answers without a follow-up hint", () => {
+const answerFirstLine =
+	"First answer the user's note directly using the question and option context; re-ask only the affected question if a choice is still needed.";
+
+test("only compact elaborate results carry one answer-first instruction", () => {
 	const full = run("full");
 	const compact = run("compact");
 	assert.equal(full.submitted.content, "Goal: Speed");
 	assert.equal(full.elaborated.mode, "elaborate");
 	assert.equal(compact.submitted.content, full.submitted.content);
-	assert.equal(compact.elaborated.content, full.elaborated.content);
-	for (const kind of ["cancelled", "invalid", "unavailable", "aborted"]) {
+	assert.equal(
+		compact.elaborated.content,
+		`${full.elaborated.content}\n${answerFirstLine}`
+	);
+	assert.equal(compact.elaborated.content.split(answerFirstLine).length, 2);
+	for (const kind of [
+		"cancelled",
+		"cancelledElaborate",
+		"invalid",
+		"unavailable",
+		"aborted",
+	]) {
 		assert.equal(compact[kind].content, full[kind].content, kind);
 		assert.equal(compact[kind].cancelled, true, kind);
 	}
