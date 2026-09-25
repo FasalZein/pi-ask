@@ -62,7 +62,7 @@ export function registerAskTool(
 }
 
 async function executeAskTool(
-	pi: Pick<ExtensionAPI, "appendEntry" | "exec">,
+	pi: Pick<ExtensionAPI, "appendEntry" | "exec" | "getCommands">,
 	toolCallId: string,
 	params: AskParams,
 	signal: AbortSignal | undefined,
@@ -89,12 +89,13 @@ async function executeAskTool(
 	try {
 		const result = await runAskFlow(ctx, params, {
 			exec: pi.exec,
+			getCommands: () => pi.getCommands(),
 			signal,
 			remote: remoteAsk
 				? { runtime: remoteAsk, source: "tool", toolCallId }
 				: undefined,
 		});
-		return successfulResponse(result);
+		return successfulResponse(result, pi.getCommands());
 	} finally {
 		ctx.ui.setWorkingVisible(true);
 	}

@@ -19,6 +19,7 @@ import { registerPendingAskResume } from "../src/resume-pending-ask.ts";
 import type { AskParams } from "../src/types.ts";
 
 const CANVAS_RE = /Canvas/;
+const SKILL_POINTER_RE = /Read skill \/skill:tdd: \/skills\/tdd\/SKILL\.md/;
 
 const params: AskParams = {
 	title: "Choose engine",
@@ -247,6 +248,9 @@ test("pending ask resume scans only startup, resume, and fork TUI events", () =>
 	const remoteAsk = createRemoteAskRuntime(new TestEventBus() as never);
 	registerPendingAskResume(
 		{
+			getCommands() {
+				return [];
+			},
 			on(event: string, handler: (event: any, ctx: any) => void) {
 				if (event === "session_start") {
 					sessionStartHandler = handler;
@@ -304,6 +308,18 @@ test("resumed submit persists dismissal, delivers an answer, and emits remote li
 	});
 	const harness = createResumeHarness(branch, remoteAsk, {
 		idle: false,
+		commands: [
+			{
+				name: "skill:tdd",
+				source: "skill",
+				sourceInfo: {
+					path: "/skills/tdd/SKILL.md",
+					source: "test",
+					scope: "user",
+					origin: "top-level",
+				},
+			},
+		],
 		onSend(text, options) {
 			delivered.push({ text, options });
 			resolveDelivery?.();
@@ -318,7 +334,7 @@ test("resumed submit persists dismissal, delivers an answer, and emits remote li
 			flowId: started.flowId,
 			response: {
 				kind: "answer",
-				answers: { engine: { values: ["canvas"] } },
+				answers: { engine: { values: ["canvas"], note: "use /skill:tdd" } },
 			},
 		});
 	});
@@ -330,6 +346,7 @@ test("resumed submit persists dismissal, delivers an answer, and emits remote li
 	assert.deepEqual(harness.dismissedToolCallIds, ["call-1"]);
 	assert.equal(delivered.length, 1);
 	assert.match(delivered[0].text, CANVAS_RE);
+	assert.match(delivered[0].text, SKILL_POINTER_RE);
 	assert.deepEqual(delivered[0].options, { deliverAs: "followUp" });
 
 	const started = findEvent<RemoteAskStartedEvent>(bus, PI_ASK_STARTED_EVENT);
@@ -402,6 +419,9 @@ function createResumeHarness(
 		idle?: boolean;
 		onDismissNotice?: () => void;
 		onSend?: (text: string, sendOptions: unknown) => void;
+		commands?: ReturnType<
+			import("@earendil-works/pi-coding-agent").ExtensionAPI["getCommands"]
+		>;
 	} = {}
 ) {
 	let sessionStartHandler: ((event: any, ctx: any) => void) | undefined;
@@ -410,6 +430,9 @@ function createResumeHarness(
 
 	registerPendingAskResume(
 		{
+			getCommands() {
+				return options.commands ?? [];
+			},
 			on(event: string, handler: (event: any, ctx: any) => void) {
 				if (event === "session_start") {
 					sessionStartHandler = handler;

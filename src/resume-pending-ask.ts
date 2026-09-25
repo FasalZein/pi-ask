@@ -53,7 +53,10 @@ export function registerPendingAskResume(
 }
 
 async function reopenPendingAsk(
-	pi: Pick<ExtensionAPI, "appendEntry" | "sendUserMessage" | "exec">,
+	pi: Pick<
+		ExtensionAPI,
+		"appendEntry" | "sendUserMessage" | "exec" | "getCommands"
+	>,
 	ctx: ExtensionContext,
 	pendingAsk: PendingAskToolCall,
 	remoteAsk: RemoteAskRuntime
@@ -68,6 +71,7 @@ async function reopenPendingAsk(
 	try {
 		result = await runAskFlow(ctx, pendingAsk.params, {
 			exec: pi.exec,
+			getCommands: () => pi.getCommands(),
 			remote: {
 				runtime: remoteAsk,
 				source: "ask:resume",
@@ -84,7 +88,7 @@ async function reopenPendingAsk(
 		return;
 	}
 
-	const text = successfulResponse(result).content[0].text;
+	const text = successfulResponse(result, pi.getCommands()).content[0].text;
 	pi.sendUserMessage(
 		text,
 		ctx.isIdle() ? undefined : { deliverAs: "followUp" }
