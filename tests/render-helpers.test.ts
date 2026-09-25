@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
 import {
+	renderBox,
 	renderEditorBlock,
 	renderFooterText,
 } from "../src/ui/render-helpers.ts";
@@ -101,5 +102,24 @@ test("editing footers use configured key labels", () => {
 	assert.equal(
 		renderFooterText(config, "note"),
 		" Ctrl+K save · Q close · ? settings"
+	);
+});
+
+test("preview box uses pi's border token on all four edges", () => {
+	const calls: [string, string][] = [];
+	const theme = {
+		fg(color: string, text: string) {
+			calls.push([color, text]);
+			return text;
+		},
+	} as never;
+	const lines = renderBox([{ text: "Preview", color: "text" }], 20, theme);
+	assert.equal(lines.length, 3);
+	assert.deepEqual(
+		calls.filter(([color]) => color === "border").map(([, text]) => text),
+		["┌──────────────────┐", "└──────────────────┘", "│", "│"]
+	);
+	assert.ok(
+		calls.some(([color, text]) => color === "text" && text === "Preview")
 	);
 });

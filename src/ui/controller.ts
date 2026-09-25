@@ -1,8 +1,9 @@
-import type {
-	ExtensionAPI,
-	ExtensionContext,
+import {
+	type ExtensionAPI,
+	type ExtensionContext,
+	getSelectListTheme,
 } from "@earendil-works/pi-coding-agent";
-import type { Editor, EditorTheme } from "@earendil-works/pi-tui";
+import type { Editor } from "@earendil-works/pi-tui";
 import type { AskConfig } from "../config/schema.ts";
 import { getAskConfigStore } from "../config/store.ts";
 import {
@@ -812,20 +813,10 @@ function createEditor(
 	cwd: string,
 	commands: SkillCommands
 ) {
-	const editor = new SkillReferenceEditor(tui, createEditorTheme(theme));
+	const editor = new SkillReferenceEditor(tui, {
+		borderColor: (text) => theme.fg("borderMuted", text),
+		selectList: getSelectListTheme(),
+	});
 	editor.setAutocompleteProvider(createAskAutocompleteProvider(cwd, commands));
 	return editor;
-}
-
-function createEditorTheme(theme: Theme): EditorTheme {
-	return {
-		borderColor: (text) => theme.fg("accent", text),
-		selectList: {
-			description: (text) => theme.fg("muted", text),
-			noMatch: (text) => theme.fg("warning", text),
-			scrollInfo: (text) => theme.fg("dim", text),
-			selectedPrefix: (text) => theme.fg("accent", text),
-			selectedText: (text) => theme.fg("accent", text),
-		},
-	};
 }

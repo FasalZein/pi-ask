@@ -251,8 +251,8 @@ export function renderBox(
 ): string[] {
 	const boxWidth = Math.max(UI_DIMENSIONS.boxMinWidth, width);
 	const innerWidth = Math.max(4, boxWidth - 2);
-	const top = theme.fg("accent", `┌${"─".repeat(innerWidth)}┐`);
-	const bottom = theme.fg("accent", `└${"─".repeat(innerWidth)}┘`);
+	const top = theme.fg("border", `┌${"─".repeat(innerWidth)}┐`);
+	const bottom = theme.fg("border", `└${"─".repeat(innerWidth)}┘`);
 	const lines = [top];
 	for (const item of content) {
 		for (const rawLine of item.preserveSpacing
@@ -261,7 +261,7 @@ export function renderBox(
 			const line = theme.fg(item.color, rawLine);
 			const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(line)));
 			lines.push(
-				theme.fg("accent", "│") + line + padding + theme.fg("accent", "│")
+				theme.fg("border", "│") + line + padding + theme.fg("border", "│")
 			);
 		}
 	}

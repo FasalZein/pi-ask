@@ -19,7 +19,7 @@ export function renderFrameHeader(args: {
 	const { lines, state, theme, width } = args;
 	const add = (text = "") => lines.push(truncateToWidth(text, width));
 
-	add(theme.fg("accent", "─".repeat(Math.max(1, width))));
+	add(theme.fg("border", "─".repeat(Math.max(1, width))));
 	const progress = isSubmitTab(state)
 		? "Review"
 		: `Question ${state.activeTabIndex + 1} of ${state.questions.length}`;
@@ -66,7 +66,7 @@ export function renderFrameFooter(args: {
 			add(theme.fg("dim", line));
 		}
 	}
-	add(theme.fg("accent", "─".repeat(Math.max(1, width))));
+	add(theme.fg("border", "─".repeat(Math.max(1, width))));
 }
 
 const TAB_SEPARATOR_WIDTH = visibleWidth(" ");
