@@ -43,7 +43,7 @@ This input shape shows full mode. In compact mode, the tool schema has no option
 - question `label` falls back to `Q1`, `Q2`, ...
 - option `label` is required in the public schema; before schema validation, a missing or blank string label is derived from a non-empty `value` by replacing hyphens and underscores with spaces and capitalizing the first character
 - `recommended` is optional presentation metadata; zero, one, or multiple options may set it to `true`
-- recommended options show `(recommended)` after the option label on the same row; the description, when present, stays on the next row; recommendations never preselect an answer
+- recommended options render warning-colored `(recommended)` followed by muted ` | <description>` on the row under the label, or only `(recommended)` when no description exists; recommendations never preselect an answer
 - `type` defaults to `single`
 - `required` defaults to `false`
 - `required` is metadata only; it never blocks submission
@@ -215,11 +215,11 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 
 ## Supported UX
 
-- tabbed multi-question flow
+- tabbed multi-question flow; the tab bar shows `☐`/`☒` unanswered/answered markers and a `☰ Review` tab between `←` and `→` arrows, highlights the active tab, and keeps it visible on narrow terminals
 - rules and preview frames use pi border colors; the custom-answer and note editor uses pi editor colors and completion-list styling
 - single-select, multi-select, and preview questions
 - preview boxes appear beside options at wide widths and below them at narrow widths; each is at most 14 rows tall and shrinks on short terminals. Long previews scroll independently with `[` and `]` by default, show the number of lines above and below, and preserve plain-text spacing without Markdown. Long option descriptions may be shortened inside the cap.
-- recommended options show `(recommended)` after the label in standard and preview lists, without automatic selection
+- recommended options show the warning-colored `(recommended)` subtitle in standard and preview lists, without automatic selection
 - active question type changes via configurable `main.changeQuestionType` hotkey, default `t`; non-preview questions toggle `single <-> multi`; preview questions toggle `preview <-> multi`
 - inline free-form answers for all question types
 - native pi-style `@` file path autocomplete inside free-form answer and note editors
@@ -228,7 +228,7 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 - question notes via `Shift+N`
 - option notes via `n`
 - number-key quick selection
-- review tab shows `Review · n of m answered`, then aligned ✓/– question rows with answers or `not answered`, then Submit, Elaborate, and Cancel actions
+- review tab shows the Submit, Elaborate, and Cancel actions on the left and `Review answers` on the right; each question shows its label, question note, `→ answer` lines in the success color with option notes under their answers, or `→ unanswered`; narrow terminals stack the review above the actions; on short terminals the answers scroll under a fixed title and show how many questions are above and below
 - on the review tab, `Submit` and `Cancel` preview notes only for answered questions
 - on the review tab, `Elaborate` preview expands to all question notes and all option notes, including notes on unselected options
 - transcript-friendly call and result rendering
@@ -252,7 +252,7 @@ Main flow:
 - `global.settings` opens ask settings; default: `?`
 - `global.dismiss` dismisses the active ask surface; default: `Ctrl+C`
 - `main.nextTab` / `main.previousTab` move between tabs; defaults: `Tab`/`Right`, `Shift+Tab`/`Left`
-- `main.nextOption` / `main.previousOption` move between options or review rows and actions; on review, Up from Submit focuses the last question row and Enter opens the focused question; defaults: `Down`, `Up`
+- `main.nextOption` / `main.previousOption` move between options, or between review actions; defaults: `Down`, `Up`
 - `main.pageUp` / `main.pageDown` move question focus by one visible page, or scroll review answers without moving the selected action; defaults: `Shift+Up` / `PageUp`, `Shift+Down` / `PageDown`
 - `main.previewUp` / `main.previewDown` scroll long preview text in a bounded preview pane, without moving option focus; defaults: `[` and `]`
 - `main.confirm`, `main.cancel`, and `main.toggle` confirm, cancel, or toggle; defaults: `Enter`, `Esc`, `Space`
@@ -260,11 +260,10 @@ Main flow:
 - `main.optionNote` and `main.questionNote` open option/question notes; defaults: `n`, `Shift+N`
 - question options use `▶` for focus; multi-select options use `[ ]` and `[✓]`, and the question shows `Pick any · N of M selected` for predefined options (plus a selected custom answer, if any)
 - question footers show the configured up/down and next-tab navigation, plus fixed `1-9` shortcuts; editor footers do not advertise tab navigation
-- on a short terminal, the header, tabs, question prompt, multi-selection count, and footer stay fixed while option rows and review answers window to the available rows; focused options, review rows, and review actions stay visible, and indicators count hidden options or review rows when space permits
-- in pi fullscreen on pi-tui 0.85.0 or later, the wheel scrolls option or review rows under the pointer, or only the preview when over its box; scrolling does not move selection, and the next key restores list focus-follow; at a scroll boundary, the wheel event passes through to pi. Older hosts do not call the mouse handler, and regular mode leaves mouse input to the terminal.
-- the header shows `Question N of M` for questions and `Review` on the review tab; text tabs show ✓ after answered question labels, a filled active tab, and a separate `│ Review n/m` count; narrow tab rows keep the active tab visible and show overflow markers only for hidden tabs
+- on a short terminal, the header, tabs, question prompt, multi-selection count, and footer stay fixed while option rows and review answers window to the available rows; focused options and review actions stay visible, and indicators count hidden options or review questions when space permits
+- in pi fullscreen on pi-tui 0.85.0 or later, the wheel scrolls option rows or review answers under the pointer, or only the preview when over its box; scrolling does not move selection, and the next key restores list focus-follow; at a scroll boundary, the wheel event passes through to pi. Older hosts do not call the mouse handler, and regular mode leaves mouse input to the terminal.
 - pi `tui.select` up/down/confirm bindings also navigate and confirm when they do not conflict with an ask binding; pi select cancel never cancels an ask, and `Ctrl+C` still dismisses
-- `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel` even when a question row has focus
+- `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel`
 - when `Double-press review shortcuts` is enabled, review-tab `1`, `2`, and `3` require the same key twice without a timeout, and the review screen shows an inline hint for the pending action
 
 Editing flow:

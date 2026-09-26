@@ -446,7 +446,7 @@ test("custom configured note shortcuts are used at runtime", () => {
 	});
 });
 
-test("review arrows focus answers, Enter opens the row, and number shortcuts retain action semantics", async () => {
+test("review arrows move only between actions and number shortcuts keep action semantics", async () => {
 	getAskConfigStore().setConfig({
 		...DEFAULT_ASK_CONFIG,
 		behaviour: {
@@ -504,13 +504,11 @@ test("review arrows focus answers, Enter opens the row, and number shortcuts ret
 		component.handleInput("\t");
 		component.handleInput("\t");
 		component.handleInput("\x1b[A");
-		assert(component.render(80).join("\n").includes("▶ – Last   not answered"));
-		component.handleInput("\x1b[A");
-		assert(component.render(80).join("\n").includes("▶ – First  not answered"));
+		assert(component.render(80).join("\n").includes("❯ 1. Submit"));
 		component.handleInput("\x1b[B");
-		component.handleInput("\r");
-		assert(component.render(80).join("\n").includes("Question 2 of 2"));
-		component.handleInput("\t");
+		const review = component.render(80).join("\n");
+		assert(review.includes("❯ 2. Elaborate"));
+		assert(!review.includes("▶"));
 		component.handleInput("2");
 		assert(
 			component.render(80).join("\n").includes("Press 2 again to Elaborate")

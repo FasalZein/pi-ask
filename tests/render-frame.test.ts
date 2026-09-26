@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { visibleWidth } from "@earendil-works/pi-tui";
 import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
 import { createInitialState } from "../src/state/create.ts";
+import { applyNumberShortcut } from "../src/state/transitions.ts";
 import { renderAskScreen } from "../src/ui/render.ts";
 
 function mockEditor() {
@@ -29,8 +29,7 @@ function plainTheme() {
 		},
 	} as never;
 }
-
-test("wide header shows question progress and text tabs without overflow markers", () => {
+test("wide header keeps all tabs and framing arrows on the tab row", () => {
 	const state = createInitialState({
 		title: "Demo",
 		questions: [
@@ -57,8 +56,7 @@ test("wide header shows question progress and text tabs without overflow markers
 		editor: mockEditor(),
 	});
 
-	assert.equal(lines[1], ` Demo${" ".repeat(120 - 5 - 15)}Question 1 of 2`);
-	assert.equal(lines[3], " One   Two  │ Review 0/2 ");
+	assert.equal(lines[3], " ←  ☐ One   ☐ Two   ☰ Review  →");
 });
 
 test("narrow tab strip keeps active middle tab visible", () => {
@@ -107,11 +105,7 @@ test("narrow tab strip keeps active middle tab visible", () => {
 		editor: mockEditor(),
 	});
 
-	assert.equal(lines[1]?.endsWith("Question 3 of 5"), true);
-	assert.equal(lines[3]?.includes("Three"), true);
-	assert.equal(lines[3]?.includes("One"), false);
-	assert.equal(lines[3]?.includes("›"), true);
-	assert.equal(lines[3]?.includes("‹"), true);
+	assert.equal(lines[3], " ←  ☐ Three   ☐ Four  →");
 });
 
 test("narrow tab strip keeps submit tab visible when active", () => {
@@ -149,24 +143,56 @@ test("narrow tab strip keeps submit tab visible when active", () => {
 		editor: mockEditor(),
 	});
 
-	assert.equal(lines[1]?.endsWith("Review"), true);
-	assert.equal(lines[3]?.includes("Review 0/3"), true);
-	assert.equal(lines[3]?.includes("Three"), false);
-	assert.equal(lines[3]?.includes("›"), false);
+	assert.equal(lines[3], " ←  ☰ Review  →");
 });
 
-test("tab window stays within narrow widths and marks only hidden sides", () => {
+test("tab strip avoids truncation at narrow boundary widths", () => {
 	const state = createInitialState({
 		title: "Demo",
-		questions: ["One", "Two", "Three", "Four", "Five"].map((label) => ({
-			id: label,
-			label,
-			prompt: label,
-			options: [{ value: "a", label: "A" }],
-		})),
+		questions: [
+			{
+				id: "q1",
+				label: "One",
+				prompt: "One",
+				options: [{ value: "a", label: "A" }],
+			},
+			{
+				id: "q2",
+				label: "Two",
+				prompt: "Two",
+				options: [{ value: "a", label: "A" }],
+			},
+			{
+				id: "q3",
+				label: "Three",
+				prompt: "Three",
+				options: [{ value: "a", label: "A" }],
+			},
+			{
+				id: "q4",
+				label: "Four",
+				prompt: "Four",
+				options: [{ value: "a", label: "A" }],
+			},
+			{
+				id: "q5",
+				label: "Five",
+				prompt: "Five",
+				options: [{ value: "a", label: "A" }],
+			},
+		],
 	});
-	for (const width of [24, 28, 29, 30, 31, 32, 60]) {
-		state.activeTabIndex = 2;
+	state.activeTabIndex = 2;
+
+	const expectedByWidth = new Map([
+		[28, " ←  ☐ Three   ☐ Four  →"],
+		[29, " ←  ☐ Three   ☐ Four  →"],
+		[30, " ←  ☐ Three   ☐ Four  →"],
+		[31, " ←  ☐ Two   ☐ Three   ☐ Four  →"],
+		[32, " ←  ☐ Two   ☐ Three   ☐ Four  →"],
+	]);
+
+	for (const [width, expected] of expectedByWidth) {
 		const lines = renderAskScreen({
 			config: DEFAULT_ASK_CONFIG,
 			state,
@@ -174,16 +200,13 @@ test("tab window stays within narrow widths and marks only hidden sides", () => 
 			width,
 			editor: mockEditor(),
 		});
-		assert.equal(lines[3]?.includes("Three"), true);
-		assert.ok((lines[3]?.length ?? 0) <= width);
-		if (width === 60) {
-			assert.equal(lines[3], " One   Two   Three   Four   Five  │ Review 0/5 ");
-		}
+		assert.equal(lines[3], expected);
 	}
 });
 
-test("answered tabs and review count follow committed answers", () => {
-	const state = createInitialState({
+// Expected lines match upstream v1.2.0 output for the same state.
+test("answered tabs show the checked marker and success color; review stays success", () => {
+	let state = createInitialState({
 		title: "Demo",
 		questions: ["One", "Two"].map((label) => ({
 			id: label,
@@ -192,48 +215,29 @@ test("answered tabs and review count follow committed answers", () => {
 			options: [{ value: "a", label: "A" }],
 		})),
 	});
-	state.answers.One = { selected: [{ index: 1, label: "A", value: "a" }] };
+	state = applyNumberShortcut(state, 1);
+	const theme = {
+		fg(color: string, text: string) {
+			return `<${color}>${text}</>`;
+		},
+		bg(color: string, text: string) {
+			return `[${color}:${text}]`;
+		},
+		bold(text: string) {
+			return text;
+		},
+	} as never;
 	const lines = renderAskScreen({
 		config: DEFAULT_ASK_CONFIG,
 		state,
-		theme: plainTheme(),
-		width: 80,
+		theme,
+		width: 200,
 		editor: mockEditor(),
 	});
-	assert.equal(lines[3], " One ✓   Two  │ Review 1/2 ");
-	state.activeTabIndex = 2;
-	state.view = { kind: "submit" };
-	const review = renderAskScreen({
-		config: DEFAULT_ASK_CONFIG,
-		state,
-		theme: plainTheme(),
-		width: 80,
-		editor: mockEditor(),
-	});
-	assert.equal(review[1]?.endsWith("Review"), true);
-	assert.equal(review[3], " One ✓   Two  │ Review 1/2 ");
-});
-
-test("long titles leave the question counter visible", () => {
-	const state = createInitialState({
-		title: "A very long project name that fills the header",
-		questions: [
-			{
-				id: "q1",
-				prompt: "Pick",
-				options: [{ value: "a", label: "A" }],
-			},
-		],
-	});
-	const lines = renderAskScreen({
-		config: DEFAULT_ASK_CONFIG,
-		state,
-		theme: plainTheme(),
-		width: 30,
-		editor: mockEditor(),
-	});
-	assert.equal(lines[1]?.endsWith("Question 1 of 1"), true);
-	assert.ok(visibleWidth(lines[1] ?? "") <= 30);
+	assert.equal(
+		lines[3],
+		" <dim>← </><success> ☒ One </> [selectedBg:<text> ☐ Two </>] <success> ☰ Review </><dim> →</>"
+	);
 });
 
 test("only the active tab gets a filled background", () => {
@@ -264,7 +268,7 @@ test("only the active tab gets a filled background", () => {
 		width: 80,
 		editor: mockEditor(),
 	});
-	assert.equal(question[3], "{ One }  Two  │ Review 0/2 ");
+	assert.equal(question[3], " ← { ☐ One }  ☐ Two   ☰ Review  →");
 	state.activeTabIndex = 2;
 	state.view = { kind: "submit" };
 	const review = renderAskScreen({
@@ -274,7 +278,8 @@ test("only the active tab gets a filled background", () => {
 		width: 80,
 		editor: mockEditor(),
 	});
-	assert.equal(review[3], " One   Two  {│ Review 0/2 }");
+	assert.equal(review[3], " ←  ☐ One   ☐ Two  { ☰ Review } →");
+	assert.equal(review.join("\n").includes("of 2 answered"), false);
 });
 
 test("footer hints wrap into exact lines on narrow screens", () => {

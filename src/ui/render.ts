@@ -34,7 +34,6 @@ export function renderAskScreen(args: {
 	config: AskConfig;
 	footerNotice?: string;
 	reviewShortcutHint?: string;
-	reviewFocusedRow?: number;
 	state: AskState;
 	theme: Theme;
 	width: number;
@@ -50,7 +49,6 @@ export function renderAskScreen(args: {
 	const body: string[] = [];
 	const footer = renderAskFooter(config, footerNotice, state, theme, width);
 	const starts: number[] = [];
-	const reviewStarts: number[] = [];
 	let focusStart = 0;
 	let focusEnd = 1;
 	const trackRow = (index: number, start: number, end: number) => {
@@ -79,13 +77,11 @@ export function renderAskScreen(args: {
 			width,
 			reviewShortcutHint,
 			trackRow,
-			(index, start) => {
-				reviewStarts[index] = start;
-			},
 			args.viewport,
-			Math.max(1, (args.viewport?.rows ?? 24) - header.length - footer.length),
-			pageKeys,
-			args.reviewFocusedRow
+			args.viewport
+				? Math.max(1, args.viewport.rows - header.length - footer.length)
+				: undefined,
+			pageKeys
 		);
 	} else {
 		renderQuestionBody(
@@ -116,7 +112,6 @@ export function renderAskScreen(args: {
 		theme,
 		state,
 		starts,
-		reviewStarts,
 		pageKeys,
 		focusStart,
 		focusEnd,
@@ -207,7 +202,6 @@ function windowAskBody(args: {
 	theme: Theme;
 	state: AskState;
 	starts: number[];
-	reviewStarts: number[];
 	pageKeys: { up: string; down: string };
 	focusStart: number;
 	focusEnd: number;
@@ -220,7 +214,6 @@ function windowAskBody(args: {
 		theme,
 		state,
 		starts,
-		reviewStarts,
 		pageKeys,
 		focusStart,
 		focusEnd,
@@ -241,9 +234,10 @@ function windowAskBody(args: {
 	// Reserve both indicator rows so the body and fixed footer never move as focus changes.
 	const pageSize = Math.max(1, available - 2);
 	const maxTop = Math.max(0, body.length - pageSize);
+	// The review pane's own hit region is only valid when the body is not paged.
+	viewport.mouseReview = undefined;
 	const top = getQuestionWindowTop(
 		viewport,
-		state,
 		focusStart,
 		focusEnd,
 		pageSize,
@@ -253,12 +247,9 @@ function windowAskBody(args: {
 	viewport.bodyRows = pageSize;
 	setListRegion(viewport, state, header.length + 1, pageSize, maxTop);
 	movePreviewRegion(viewport, header.length + 1 - top);
-	const measuredStarts = isSubmitTab(state) ? reviewStarts : starts;
-	const above = measuredStarts.filter((start) => start < top).length;
-	const below = measuredStarts.filter(
-		(start) => start >= top + pageSize
-	).length;
-	const noun = isSubmitTab(state) ? "rows" : "options";
+	const above = starts.filter((start) => start < top).length;
+	const below = starts.filter((start) => start >= top + pageSize).length;
+	const noun = isSubmitTab(state) ? "actions" : "options";
 	const up = above ? `   ↑ ${above} more ${noun} above · ${pageKeys.up}` : "";
 	const down = below
 		? `   ↓ ${below} more ${noun} below · ${pageKeys.down}`
@@ -300,7 +291,6 @@ function moveReviewRegion(viewport: AskViewport, offset: number) {
 
 function getQuestionWindowTop(
 	viewport: AskViewport,
-	state: AskState,
 	focusStart: number,
 	focusEnd: number,
 	pageSize: number,
@@ -308,7 +298,7 @@ function getQuestionWindowTop(
 ): number {
 	let top = Math.max(0, Math.min(viewport.scrollTop, maxTop));
 	// Wheel scrolling suspends focus-follow until the next key press.
-	if (viewport.followFocus === false || isSubmitTab(state)) {
+	if (viewport.followFocus === false) {
 		return top;
 	}
 	if (focusEnd - focusStart > pageSize || focusStart < top) {

@@ -47,7 +47,8 @@ test("wide and stacked previews cap at 14 rows and report the exact hidden count
 		);
 		assert(pane.some((line) => line.includes("line 9")));
 		assert(!pane.some((line) => line.includes("line 10")));
-		assert(lines.some((line) => line.includes("▶ 1. First (recommended)")));
+		assert(lines.some((line) => line.includes("▶ 1. First")));
+		assert(lines.some((line) => line.includes("(recommended)")));
 	}
 });
 
@@ -66,7 +67,8 @@ test("scrolling preview changes its window without moving the option", () => {
 	);
 	assert(pane.some((line) => line.includes("line 7")));
 	assert(!pane.some((line) => line.includes("line 6 ")));
-	assert(lines.some((line) => line.includes("▶ 1. First (recommended)")));
+	assert(lines.some((line) => line.includes("▶ 1. First")));
+	assert(lines.some((line) => line.includes("(recommended)")));
 });
 
 test("preview keeps ASCII mockup spacing exactly, including repeated and trailing spaces", () => {
@@ -103,8 +105,10 @@ test("preview keeps ASCII mockup spacing exactly, including repeated and trailin
 
 test("short terminals reduce the preview box while keeping the option and footer visible", () => {
 	for (const width of [80, 100]) {
+		// 20 rows: the smallest height that fits the recommended subtitle row
+		// and the 6-row minimum preview box without paging the body.
 		const viewport = {
-			rows: 18,
+			rows: 20,
 			scrollTop: 0,
 			reviewScrollTop: 0,
 			reviewPageRows: 0,
@@ -119,9 +123,10 @@ test("short terminals reduce the preview box while keeping the option and footer
 			editor,
 			viewport,
 		});
-		assert.equal(lines.length, 18);
+		assert.equal(lines.length, 20);
 		assert(box(lines).length < 14);
-		assert(lines.some((line) => line.includes("▶ 1. First (recommended)")));
+		assert(lines.some((line) => line.includes("▶ 1. First")));
+		assert(lines.some((line) => line.includes("(recommended)")));
 		assert(lines.at(-2)?.includes("settings"));
 	}
 });
