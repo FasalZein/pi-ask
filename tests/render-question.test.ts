@@ -81,22 +81,35 @@ test("standard options show recommendation metadata without changing answers", (
 	});
 
 	const lines: string[] = [];
+	const calls: Array<{ color: string; text: string }> = [];
 	renderQuestionScreen({
 		editor: mockEditor(),
 		lines,
 		options: getRenderableOptions(state.questions[0]),
 		question: state.questions[0],
 		state,
-		theme: mockTheme(),
+		theme: mockTheme((color, text) => calls.push({ color, text })),
 		width: 80,
 	});
 
-	const labelIndex = lines.findIndex((line) =>
-		line.includes("1. Option A (recommended)")
-	);
+	// Upstream v1.2.0 subtitle: warning marker, then the muted description.
+	const labelIndex = lines.indexOf(" ▶ 1. Option A");
 	assert.notEqual(labelIndex, -1);
+	assert.equal(
+		lines[labelIndex + 1],
+		"      (recommended) | Best fit for the stated constraints"
+	);
 	assert(
-		lines[labelIndex + 1]?.includes("Best fit for the stated constraints")
+		calls.some(
+			(call) => call.color === "warning" && call.text === "(recommended)"
+		)
+	);
+	assert(
+		calls.some(
+			(call) =>
+				call.color === "muted" &&
+				call.text === " | Best fit for the stated constraints"
+		)
 	);
 	assert.equal(state.answers.q1, undefined);
 
@@ -294,19 +307,27 @@ test("preview questions show custom and recommended options", () => {
 	});
 
 	const lines: string[] = [];
+	const calls: Array<{ color: string; text: string }> = [];
 	renderQuestionScreen({
 		editor: mockEditor(),
 		lines,
 		options: getRenderableOptions(state.questions[0]),
 		question: state.questions[0],
 		state,
-		theme: mockTheme(),
+		theme: mockTheme((color, text) => calls.push({ color, text })),
 		width: 80,
 	});
 
 	assert(lines.some((line) => line.includes("Type your own")));
-	assert(lines.some((line) => line.includes("1. A (recommended)")));
-	assert(!lines.some((line) => line.trim() === "(recommended)"));
+	assert(lines.some((line) => line.trim() === "(recommended)"));
+	assert(
+		calls.some(
+			(call) => call.color === "warning" && call.text === "(recommended)"
+		)
+	);
+	assert(
+		!calls.some((call) => call.color === "muted" && call.text.startsWith(" |"))
+	);
 	assert.equal(state.answers.q1, undefined);
 });
 

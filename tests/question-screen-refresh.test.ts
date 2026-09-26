@@ -48,23 +48,22 @@ for (const width of [60, 100, 140]) {
 		});
 		assert.equal(state.answers.storage, undefined);
 		assert(lines.includes(" Which storage engine should the service use?"));
-		assert(lines.includes(" ▶ 1. PostgreSQL (recommended)"));
+		assert(lines.includes(" ▶ 1. PostgreSQL"));
 		assert(lines.includes("   2. SQLite"));
 		const description =
 			width === 60
 				? [
-						"      Relational, strong consistency; the team already runs",
-						"      it in production.",
+						"      (recommended) | Relational, strong consistency; the",
+						"      team already runs it in production.",
 					]
 				: [
-						"      Relational, strong consistency; the team already runs it in production.",
+						"      (recommended) | Relational, strong consistency; the team already runs it in production.",
 					];
-		const labelIndex = lines.indexOf(" ▶ 1. PostgreSQL (recommended)");
+		const labelIndex = lines.indexOf(" ▶ 1. PostgreSQL");
 		assert.deepEqual(
 			lines.slice(labelIndex + 1, labelIndex + 1 + description.length),
 			description
 		);
-		assert(!lines.some((line) => line.trimStart().startsWith("(recommended)")));
 		const footers: Record<number, string[]> = {
 			60: [
 				" ↑↓ move · 1-9 pick · Tab question · Enter confirm",
@@ -107,7 +106,8 @@ test("multi selection shows checked rows without preselecting the recommended op
 	});
 	assert(lines.includes(" Pick any · 1 of 2 selected"));
 	assert(lines.includes(" ▶ 1. [✓] Authentication"));
-	assert(lines.includes("   2. [ ] SSO (recommended)"));
+	assert(lines.includes("   2. [ ] SSO"));
+	assert(lines.includes("      (recommended)"));
 	assert.deepEqual(
 		state.answers.features?.selected.map((option) => option.value),
 		["auth"]
@@ -152,7 +152,7 @@ test("multi question shows checked count and selected option in a short viewport
 	});
 	assert.equal(lines.length, 18);
 	assert(lines.includes(" Pick any · 3 of 16 selected"));
-	assert(lines.includes(" ▶ 12. [ ] SSO (recommended)"));
+	assert(lines.includes(" ▶ 12. [ ] SSO"));
 	assert(
 		lines.some((line) => line.includes("[✓] Feature")) ||
 			lines.some((line) => line.includes("more options above"))

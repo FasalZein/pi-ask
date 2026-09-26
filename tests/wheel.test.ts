@@ -160,7 +160,7 @@ test("stacked preview uses its visible box while a short list passes through", a
 	await flow;
 });
 
-test("review wheel moves rows without moving action; no overflow passes through", async () => {
+test("review wheel moves answers without moving action; no overflow passes through", async () => {
 	const questions = Array.from({ length: 12 }, (_, index) => ({
 		id: `q${index + 1}`,
 		prompt: `Question ${index + 1}`,
@@ -171,12 +171,12 @@ test("review wheel moves rows without moving action; no overflow passes through"
 		component.handleInput("\t");
 	}
 	const initial = component.render(100);
-	const row = initial.findIndex((line) => line.includes("– Q1"));
+	const row = initial.findIndex((line) => line.trimEnd().endsWith(" Q1"));
 	assert.ok(row > 0);
 	assert.deepEqual(wheel(component, 5, row, 3), { handled: true });
 	const scrolled = component.render(100).join("\n");
 	assert.ok(scrolled.includes("Q4"));
-	assert.ok(scrolled.includes("▶ 1. Submit"));
+	assert.ok(scrolled.includes("❯ 1. Submit"));
 	assert.equal(wheel(component, 5, 0, 1), undefined);
 	for (let i = 0; i < 30; i++) {
 		wheel(component, 5, row, 2);

@@ -1,25 +1,39 @@
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { wrapText } from "../text.ts";
+import { truncateToWidth } from "@earendil-works/pi-tui";
+import { UI_TEXT } from "../constants/ui.ts";
 import type { AskState } from "../types.ts";
-import { pushSavedNote, pushWrappedText } from "./render-helpers.ts";
+import {
+	mergeColumns,
+	pushSavedNote,
+	pushWrappedText,
+} from "./render-helpers.ts";
 import type { Theme } from "./render-types.ts";
 import {
 	buildReviewScreenModel,
 	type ReviewQuestionModel,
+	type ReviewScreenModel,
 } from "./view-models/review.ts";
 
+/** Scroll state for the review answers on short terminals. */
 interface ReviewWindow {
-	followFocus?: boolean;
 	mouseReview?: { start: number; end: number; maxTop: number };
 	reviewPageRows: number;
 	reviewScrollTop: number;
 }
 type RowCallback = (index: number, start: number, end: number) => void;
-interface ReviewLines {
-	ends: number[];
-	lines: string[];
-	starts: number[];
+interface PageKeys {
+	down: string;
+	up: string;
 }
+interface ReviewColumn {
+	/** Row range of the scrollable answers inside the column, if they scroll. */
+	answers?: { start: number; end: number; maxTop: number };
+	lines: string[];
+}
+
+// The "more above" indicator reuses the blank row under the title.
+const INDICATOR_ROWS = 2;
+// Title, both indicators, and at least one answer row.
+const MIN_REVIEW_ROWS = 4;
 
 export function renderSubmitScreen(
 	lines: string[],
@@ -28,188 +42,163 @@ export function renderSubmitScreen(
 	width: number,
 	reviewShortcutHint?: string,
 	onActionRow?: RowCallback,
-	onReviewRow?: RowCallback,
 	reviewWindow?: ReviewWindow,
-	availableRows = 24,
-	pageKeys = { up: "Shift+↑", down: "Shift+↓" },
-	focusedRow?: number
+	availableRows = Number.POSITIVE_INFINITY,
+	pageKeys: PageKeys = { up: "Shift+↑", down: "Shift+↓" }
 ) {
-	const model = buildReviewScreenModel(state);
-	const answered = model.questions.filter(
-		(question) => !question.unanswered
-	).length;
-	lines.push(
-		theme.fg(
-			"accent",
-			` Review · ${answered} of ${model.questions.length} answered`
-		)
-	);
-	lines.push("");
-	const review = renderReviewRows(model.questions, theme, width, focusedRow);
-	const actionLines: string[] = [];
-	const actionRows: Array<{ start: number; end: number }> = [];
-	renderReviewActions(
-		actionLines,
-		model.actions,
+	const model = buildReviewScreenModel(state, width);
+	const hintLines = renderReviewShortcutHint(reviewShortcutHint, theme, width);
+	const offset = lines.length;
+	const wide = model.layout === "wide";
+	const actionWidth = wide ? model.actionColumnWidth : width;
+	const actionLines = renderSubmitActions(model, theme, actionWidth);
+	const { room, separator } = planReviewRoom({
+		availableRows,
+		hintLines,
+		reservedRows: wide ? 0 : actionLines.length,
+		separator: !wide,
+		windowed: reviewWindow !== undefined,
+	});
+
+	const review = renderReviewColumn(
+		model,
 		theme,
-		width,
-		focusedRow,
-		(index, start, end) => {
-			actionRows[index] = { start, end };
-		}
+		wide ? Math.max(1, width - actionWidth - 2) : width,
+		wide ? Math.max(room, actionLines.length) : room,
+		reviewWindow,
+		pageKeys
 	);
-	const hintLines: string[] = [];
-	appendReviewHint(hintLines, reviewShortcutHint, theme, width);
+	if (wide) {
+		lines.push(...mergeColumns(actionLines, review.lines, actionWidth, width));
+		reportActionRows(model, offset, onActionRow);
+	} else {
+		lines.push(...review.lines, ...(separator ? [""] : []));
+		reportActionRows(model, lines.length, onActionRow);
+		lines.push(...actionLines);
+	}
+	reportReviewRegion(reviewWindow, review, offset);
+	lines.push(...hintLines);
+}
+
+/**
+ * Rows left for the review answers. Stacked layouts spend one separator row
+ * between the answers and actions. On very short terminals, the blank spacer
+ * rows go to the answers first; `hintLines` loses its leading blank in place.
+ */
+function planReviewRoom(args: {
+	availableRows: number;
+	hintLines: string[];
+	reservedRows: number;
+	separator: boolean;
+	windowed: boolean;
+}): { room: number; separator: boolean } {
+	const { hintLines, windowed } = args;
+	let separator = args.separator;
 	let room =
-		availableRows - lines.length - actionLines.length - hintLines.length;
-	if (room <= 3 && hintLines[0] === "") {
+		args.availableRows -
+		hintLines.length -
+		args.reservedRows -
+		(separator ? 1 : 0);
+	if (windowed && room < MIN_REVIEW_ROWS && hintLines[0] === "") {
 		hintLines.shift();
 		room++;
 	}
-	if (room <= 3) {
-		lines.pop();
+	if (windowed && room < MIN_REVIEW_ROWS && separator) {
+		separator = false;
 		room++;
 	}
-	const separator = room > 3;
-	const reviewStart = lines.length;
-	const windowed = windowReviewRows(
-		review,
-		theme,
-		reviewWindow,
-		room - (separator ? 1 : 0),
-		pageKeys,
-		focusedRow
-	);
-	if (reviewWindow) {
-		reviewWindow.mouseReview = {
-			start: reviewStart,
-			end: reviewStart + windowed.lines.length,
-			maxTop: Math.max(0, review.lines.length - windowed.pageSize),
-		};
-	}
-	reportVisibleRows(review, windowed, lines.length, onReviewRow);
-	lines.push(...windowed.lines);
-	if (separator) {
-		lines.push("");
-	}
-	const actionOffset = lines.length;
-	lines.push(...actionLines, ...hintLines);
-	for (const [index, row] of actionRows.entries()) {
-		onActionRow?.(index, actionOffset + row.start, actionOffset + row.end);
-	}
+	return { room, separator };
 }
 
-function reportVisibleRows(
-	review: ReviewLines,
-	windowed: ReturnType<typeof windowReviewRows>,
+function reportActionRows(
+	model: ReviewScreenModel,
 	offset: number,
-	onReviewRow?: RowCallback
-) {
-	const rowOffset = offset + (windowed.indicators ? 1 : 0);
-	for (const [index, start] of review.starts.entries()) {
-		if (start >= windowed.top && start < windowed.top + windowed.pageSize) {
-			onReviewRow?.(
-				index,
-				rowOffset + start - windowed.top,
-				rowOffset + review.ends[index] - windowed.top
-			);
-		}
-	}
-}
-
-function renderReviewActions(
-	lines: string[],
-	actions: ReturnType<typeof buildReviewScreenModel>["actions"],
-	theme: Theme,
-	width: number,
-	focusedRow?: number,
 	onActionRow?: RowCallback
 ) {
-	for (const [index, action] of actions.entries()) {
-		const start = lines.length;
-		const selected = focusedRow === undefined && action.selected;
-		const prefix = selected ? " ▶ " : "   ";
-		pushWrappedText(
-			lines,
-			`${index + 1}. ${action.label}`,
-			width,
-			theme,
-			selected ? "accent" : "text",
-			prefix,
-			prefix
-		);
-		onActionRow?.(index, start, lines.length);
+	// Action labels are short and never wrap, so each action owns one row.
+	for (const index of model.actions.keys()) {
+		onActionRow?.(index, offset + index, offset + index + 1);
 	}
 }
 
-function appendReviewHint(
-	lines: string[],
-	hint: string | undefined,
-	theme: Theme,
-	width: number
+function reportReviewRegion(
+	reviewWindow: ReviewWindow | undefined,
+	review: ReviewColumn,
+	offset: number
 ) {
-	if (hint) {
-		lines.push("");
-		pushWrappedText(lines, hint, width, theme, "dim", " ", " ");
+	if (reviewWindow && review.answers) {
+		reviewWindow.mouseReview = {
+			start: offset + review.answers.start,
+			end: offset + review.answers.end,
+			maxTop: review.answers.maxTop,
+		};
 	}
 }
 
-function renderReviewRows(
-	questions: ReviewQuestionModel[],
+function renderReviewColumn(
+	model: ReviewScreenModel,
 	theme: Theme,
 	width: number,
-	focusedRow?: number
-): ReviewLines {
-	const labelsWidth = Math.min(
-		Math.max(0, width - 18),
-		Math.max(...questions.map((question) => visibleWidth(question.label)))
-	);
-	const lines: string[] = [];
+	maxRows: number,
+	reviewWindow: ReviewWindow | undefined,
+	pageKeys: PageKeys
+): ReviewColumn {
+	const title: string[] = [];
+	pushWrappedText(title, UI_TEXT.reviewTitle, width, theme, "accent", " ", " ");
+	const answers: string[] = [];
 	const starts: number[] = [];
-	const ends: number[] = [];
-	for (const [index, question] of questions.entries()) {
-		starts.push(lines.length);
-		renderReviewRow(
-			lines,
-			question,
-			theme,
-			width,
-			labelsWidth,
-			focusedRow === index
-		);
-		ends.push(lines.length);
+	for (const [index, question] of model.questions.entries()) {
+		starts.push(answers.length);
+		renderReviewQuestion(answers, question, theme, width);
+		if (index < model.questions.length - 1) {
+			answers.push("");
+		}
 	}
-	return { lines, starts, ends };
+
+	if (!reviewWindow || title.length + 1 + answers.length <= maxRows) {
+		if (reviewWindow) {
+			reviewWindow.reviewScrollTop = 0;
+			reviewWindow.reviewPageRows = answers.length;
+		}
+		return { lines: [...title, "", ...answers] };
+	}
+
+	// Scroll the answers between two indicator rows under a fixed title. The
+	// title, then the indicators, give way when the terminal is too short.
+	const titleLines = maxRows >= title.length + MIN_REVIEW_ROWS - 1 ? title : [];
+	const indicators = maxRows - titleLines.length >= 3;
+	const rows = Math.max(
+		1,
+		maxRows - titleLines.length - (indicators ? INDICATOR_ROWS : 0)
+	);
+	const maxTop = Math.max(0, answers.length - rows);
+	const top = Math.max(0, Math.min(reviewWindow.reviewScrollTop, maxTop));
+	reviewWindow.reviewScrollTop = top;
+	reviewWindow.reviewPageRows = rows;
+	const above = starts.filter((start) => start < top).length;
+	const below = starts.filter((start) => start >= top + rows).length;
+	const indicator = (text: string) =>
+		indicators ? [truncateToWidth(theme.fg("dim", text), width)] : [];
+	const start = titleLines.length + (indicators ? 1 : 0);
+	return {
+		answers: { start, end: start + rows, maxTop },
+		lines: [
+			...titleLines,
+			...indicator(above ? ` ↑ ${above} more above · ${pageKeys.up}` : ""),
+			...answers.slice(top, top + rows),
+			...indicator(below ? ` ↓ ${below} more below · ${pageKeys.down}` : ""),
+		],
+	};
 }
 
-function renderReviewRow(
+function renderReviewQuestion(
 	lines: string[],
 	question: ReviewQuestionModel,
 	theme: Theme,
-	width: number,
-	labelsWidth: number,
-	focused: boolean
+	width: number
 ) {
-	const status = question.unanswered ? "–" : "✓";
-	const answer = getReviewAnswerText(question);
-	const prefix = focused ? " ▶ " : "   ";
-	const label = truncateToWidth(question.label, labelsWidth);
-	const labelPrefix = `${prefix}${status} ${label}${" ".repeat(labelsWidth - visibleWidth(label) + 2)}`;
-	const color = focused ? "accent" : getReviewRowColor(question);
-	const wrapped = wrapText(
-		answer,
-		Math.max(1, width - visibleWidth(labelPrefix))
-	);
-	lines.push(
-		truncateToWidth(
-			`${theme.fg(color, labelPrefix)}${theme.fg(color, wrapped[0] ?? "")}`,
-			width
-		)
-	);
-	const indent = `   ${" ".repeat(labelsWidth + 3)}`;
-	for (const line of wrapped.slice(1)) {
-		lines.push(truncateToWidth(`${indent}${theme.fg(color, line)}`, width));
-	}
+	pushWrappedText(lines, question.label, width, theme, "text", " ", " ");
+	// A note-only question stays unanswered, but Elaborate still shows its note.
 	if (question.note) {
 		pushSavedNote({
 			lines,
@@ -219,7 +208,23 @@ function renderReviewRow(
 			indent: "     ",
 		});
 	}
+	if (question.unanswered) {
+		lines.push(
+			truncateToWidth(`   ${theme.fg("dim", UI_TEXT.unanswered)}`, width)
+		);
+		return;
+	}
+
 	for (const selection of question.selections ?? []) {
+		pushWrappedText(
+			lines,
+			`→ ${selection.label}`,
+			width,
+			theme,
+			"success",
+			"   ",
+			"     "
+		);
 		if (selection.note) {
 			pushSavedNote({
 				lines,
@@ -227,10 +232,22 @@ function renderReviewRow(
 				width,
 				theme,
 				indent: "     ",
-				label: selection.label,
 			});
 		}
 	}
+
+	if (question.answerText) {
+		pushWrappedText(
+			lines,
+			`→ ${question.answerText}`,
+			width,
+			theme,
+			question.isCustomOnly ? "text" : "success",
+			"   ",
+			"     "
+		);
+	}
+
 	for (const optionNote of question.extraOptionNotes ?? []) {
 		pushSavedNote({
 			lines,
@@ -243,102 +260,36 @@ function renderReviewRow(
 	}
 }
 
-function getReviewRowColor(question: ReviewQuestionModel): "dim" | "text" {
-	return question.unanswered ? "dim" : "text";
-}
-
-function getReviewAnswerText(question: ReviewQuestionModel): string {
-	if (question.unanswered) {
-		return "not answered";
-	}
-	return (
-		question.answerText ??
-		question.selections?.map((selection) => selection.label).join(", ") ??
-		"not answered"
-	);
-}
-
-function windowReviewRows(
-	review: ReviewLines,
+function renderSubmitActions(
+	model: ReviewScreenModel,
 	theme: Theme,
-	window: ReviewWindow | undefined,
-	availableRows: number,
-	pageKeys: { up: string; down: string },
-	focusedRow?: number
-): { lines: string[]; top: number; pageSize: number; indicators: boolean } {
-	if (!window) {
-		return {
-			lines: review.lines,
-			top: 0,
-			pageSize: review.lines.length,
-			indicators: false,
-		};
+	width: number
+): string[] {
+	const lines: string[] = [];
+	for (const [index, action] of model.actions.entries()) {
+		const prefix = action.selected ? "❯ " : "  ";
+		pushWrappedText(
+			lines,
+			`${index + 1}. ${action.label}`,
+			width,
+			theme,
+			action.selected ? "accent" : "text",
+			prefix,
+			prefix
+		);
 	}
-	const available = Math.max(1, availableRows);
-	const indicators = available >= 3;
-	const pageSize = Math.max(1, available - (indicators ? 2 : 0));
-	window.reviewPageRows = pageSize;
-	if (review.lines.length <= available) {
-		window.reviewScrollTop = 0;
-		return {
-			lines: review.lines,
-			top: 0,
-			pageSize: review.lines.length,
-			indicators: false,
-		};
-	}
-	const top = getReviewWindowTop(
-		review,
-		window.reviewScrollTop,
-		pageSize,
-		window.followFocus === false ? undefined : focusedRow
-	);
-	window.reviewScrollTop = top;
-	const above = review.starts.filter((start) => start < top).length;
-	const below = review.starts.filter((start) => start >= top + pageSize).length;
-	return {
-		lines: [
-			...(indicators
-				? [
-						theme.fg(
-							"dim",
-							above ? ` ↑ ${above} more rows above · ${pageKeys.up}` : ""
-						),
-					]
-				: []),
-			...review.lines.slice(top, top + pageSize),
-			...(indicators
-				? [
-						theme.fg(
-							"dim",
-							below ? ` ↓ ${below} more rows below · ${pageKeys.down}` : ""
-						),
-					]
-				: []),
-		],
-		top,
-		pageSize,
-		indicators,
-	};
+	return lines;
 }
 
-function getReviewWindowTop(
-	review: ReviewLines,
-	scrollTop: number,
-	pageSize: number,
-	focusedRow?: number
-): number {
-	const maxTop = review.lines.length - pageSize;
-	let top = Math.max(0, Math.min(scrollTop, maxTop));
-	if (focusedRow === undefined) {
-		return top;
+function renderReviewShortcutHint(
+	hint: string | undefined,
+	theme: Theme,
+	width: number
+): string[] {
+	const lines: string[] = [];
+	if (hint) {
+		lines.push("");
+		pushWrappedText(lines, hint, width, theme, "dim", " ", " ");
 	}
-	const start = review.starts[focusedRow];
-	const end = review.ends[focusedRow];
-	if (end - start > pageSize || start < top) {
-		top = start;
-	} else if (end > top + pageSize) {
-		top = Math.min(maxTop, end - pageSize);
-	}
-	return top;
+	return lines;
 }

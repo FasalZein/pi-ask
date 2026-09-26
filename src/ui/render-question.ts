@@ -1,4 +1,8 @@
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import {
+	truncateToWidth,
+	visibleWidth,
+	wrapTextWithAnsi,
+} from "@earendil-works/pi-tui";
 import { UI_DIMENSIONS, UI_TEXT } from "../constants/ui.ts";
 import { getAnswer } from "../state/selectors.ts";
 import {
@@ -106,7 +110,13 @@ function renderStandardOption(
 		row.pointer,
 		" ".repeat(visibleWidth(row.pointer))
 	);
-	renderOptionSubtitle(lines, row.description, context.width, context.theme);
+	renderOptionSubtitle(
+		lines,
+		row.description,
+		row.recommended,
+		context.width,
+		context.theme
+	);
 	renderOptionDetail(lines, row.detail, context, {
 		suppressLeadingGap: !!row.description,
 	});
@@ -249,7 +259,7 @@ function renderPreviewOptionList(
 			row.pointer,
 			" ".repeat(visibleWidth(row.pointer))
 		);
-		renderOptionSubtitle(lines, row.description, width, theme);
+		renderOptionSubtitle(lines, row.description, row.recommended, width, theme);
 		onOptionRow?.(row.index, start, lines.length);
 	}
 	return lines;
@@ -332,7 +342,7 @@ function renderEditorWithIndent(args: {
 function formatOptionLabel(row: OptionRowModel): string {
 	return row.isFreeformOnly
 		? row.label
-		: `${row.index + 1}. ${row.prefix}${row.label}${row.recommended ? ` ${UI_TEXT.recommendedMarker}` : ""}`;
+		: `${row.index + 1}. ${row.prefix}${row.label}`;
 }
 
 function renderInteractiveCustomOption(
@@ -355,21 +365,37 @@ function renderInteractiveCustomOption(
 	});
 }
 
+const OPTION_SUBTITLE_INDENT = "      ";
+
 function renderOptionSubtitle(
 	lines: string[],
 	description: string | undefined,
+	recommended: boolean,
 	width: number,
 	theme: Theme
 ) {
-	if (description) {
-		pushWrappedText(
-			lines,
-			description,
-			width,
-			theme,
-			"muted",
-			"      ",
-			"      "
-		);
+	if (!recommended) {
+		if (description) {
+			pushWrappedText(
+				lines,
+				description,
+				width,
+				theme,
+				"muted",
+				OPTION_SUBTITLE_INDENT,
+				OPTION_SUBTITLE_INDENT
+			);
+		}
+		return;
+	}
+
+	const text =
+		theme.fg("warning", UI_TEXT.recommendedMarker) +
+		(description ? theme.fg("muted", ` | ${description}`) : "");
+	for (const line of wrapTextWithAnsi(
+		text,
+		Math.max(1, width - visibleWidth(OPTION_SUBTITLE_INDENT))
+	)) {
+		lines.push(truncateToWidth(`${OPTION_SUBTITLE_INDENT}${line}`, width));
 	}
 }

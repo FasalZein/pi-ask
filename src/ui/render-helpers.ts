@@ -426,12 +426,13 @@ export function measurePreviewLeftWidth(
 	let widest = 0;
 	for (let index = 0; index < options.length; index++) {
 		const option = options[index];
+		const description = option.recommended
+			? `${UI_TEXT.recommendedMarker}${option.description ? ` | ${option.description}` : ""}`
+			: option.description;
 		widest = Math.max(
 			widest,
-			visibleWidth(
-				`${index + 1}. ${option.label}${option.recommended ? ` ${UI_TEXT.recommendedMarker}` : ""}`
-			),
-			option.description ? visibleWidth(option.description) : 0
+			visibleWidth(`${index + 1}. ${option.label}`),
+			description ? visibleWidth(description) : 0
 		);
 	}
 

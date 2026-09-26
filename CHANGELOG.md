@@ -1,3 +1,7 @@
+## Unreleased
+
+* restore the upstream v1.2.0 review screen, tab bar, and `(recommended)` subtitle; remove the progress header and review row navigation ([#62](https://github.com/FasalZein/pi-ask/issues/62))
+
 # [1.3.0](https://github.com/FasalZein/pi-ask/compare/v1.2.0...v1.3.0) (2026-09-25)
 
 First release of the fork `@fasalzein/pi-ask`. It is installed from GitHub (`pi install git:github.com/FasalZein/pi-ask`), not from npm. It covers every change since upstream `@eko24ive/pi-ask` 1.2.0.

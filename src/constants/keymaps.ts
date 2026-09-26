@@ -335,8 +335,8 @@ export function renderFooterKeymaps(
 			footerHint(global.settings, "settings"),
 		],
 		submit: [
-			`${moveLabel} answers/actions`,
-			footerHint(main.confirm, "open or confirm"),
+			`${moveLabel} move`,
+			footerHint(main.confirm, "confirm"),
 			"1-3 pick",
 			footerHint(
 				main.previousTab,
