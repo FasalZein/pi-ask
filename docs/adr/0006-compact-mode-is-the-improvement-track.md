@@ -1,5 +1,7 @@
 # Compact mode is the improvement track; full mode stays frozen
 
+Status: Superseded by [ADR 0008](0008-compact-is-the-only-prompt-mode.md).
+
 This refines ADR 0005. Full mode stays frozen: upstream v1.2.0 text plus the package rename, pinned by the golden test. It is the comparison baseline for every change to model-facing text.
 
 Every change to what the model sees goes into compact mode only. That covers tool text, the parameter schema, result text, system-prompt additions, and whether `ask_user` is active at all. UI, session, and command changes that the model never sees apply to both modes.

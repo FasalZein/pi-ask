@@ -5,7 +5,7 @@ import { Value } from "typebox/value";
 import { PI_ASK_CONFIG_PROMPT } from "../src/prompt-text.ts";
 import { prepareAskParams } from "../src/state/normalize.ts";
 
-// Each process loads the extension once, just as pi does. A mode change after load must not redefine the tool.
+// Each process loads the extension once, just as pi does. The tool definition stays stable.
 const probe = `
 import askExtension from "./src/index.ts";
 import { successfulResponse } from "./src/ask-tool-helpers.ts";
@@ -16,7 +16,7 @@ const pi = {
   events: { on() {}, emit() {} },
 };
 askExtension(pi);
-process.env.PI_ASK_PROMPT_MODE = "compact";
+process.env.PI_ASK_PROMPT_MODE = "full";
 askExtension(pi);
 const submitted = { cancelled: false, mode: "submit", questions: [], answers: {} };
 const elaborated = { ...submitted, mode: "elaborate", elaboration: { items: [{ target: { kind: "question" }, question: { id: "q", label: "Goal", prompt: "Choose a goal", type: "single", options: [{ value: "speed", label: "Speed" }] }, note: "Why?", answered: false }] } };
@@ -69,15 +69,12 @@ const labelDescription =
 	"Required short visible option label shown in the list; a unique machine identifier is derived from this label.";
 const derivedValuePattern = /Offline only \[offline-only\]/;
 const blankValuePattern = /option 1: value is required/;
-const missingValuePattern =
-	/questions\[0\]\.options\[0\]\.value: Question 1, option 1: value is required/;
 const recommendation =
 	"Optional. Set true on an option you recommend for a grounded reason; state the reason in `description`.";
 
 const compact = registeredText("compact");
-const full = registeredText("full");
 
-test("prompt mode selects fixed compact text at load and preserves all other schema fields", () => {
+test("registered tool uses the concise text and label-only schema", () => {
 	assert.deepEqual(compact.warnings, []);
 	assert.equal(compact.tools.length, 2);
 	assert.deepEqual(compact.tools[0], compact.tools[1]);
@@ -92,7 +89,10 @@ test("prompt mode selects fixed compact text at load and preserves all other sch
 		questionsDescription
 	);
 	assert.equal(tool.parameters.properties.questions.maxItems, 4);
-	assert.equal(tool.promptSnippet, full.tools[0].promptSnippet);
+	assert.equal(
+		tool.promptSnippet,
+		"Clarify ambiguous or preference-sensitive decisions with a short interactive interview before proceeding"
+	);
 	const option =
 		tool.parameters.properties.questions.items.properties.options.items;
 	assert.equal(option.properties.recommended.description, recommendation);
@@ -100,19 +100,6 @@ test("prompt mode selects fixed compact text at load and preserves all other sch
 	assert.equal(Object.hasOwn(option.properties, "value"), false);
 	assert.deepEqual(option.required, ["label"]);
 	assert.equal(JSON.stringify(tool).includes('"value"'), false);
-	const unchanged = structuredClone(tool.parameters);
-	unchanged.properties.questions.description =
-		full.tools[0].parameters.properties.questions.description;
-	Reflect.deleteProperty(unchanged.properties.questions, "maxItems");
-	unchanged.properties.questions.items.properties.options.items.required =
-		full.tools[0].parameters.properties.questions.items.properties.options.items.required;
-	unchanged.properties.questions.items.properties.options.items.properties.value =
-		full.tools[0].parameters.properties.questions.items.properties.options.items.properties.value;
-	unchanged.properties.questions.items.properties.options.items.properties.label =
-		full.tools[0].parameters.properties.questions.items.properties.options.items.properties.label;
-	unchanged.properties.questions.items.properties.options.items.properties.recommended.description =
-		full.tools[0].parameters.properties.questions.items.properties.options.items.properties.recommended.description;
-	assert.deepEqual(unchanged, full.tools[0].parameters);
 	assert.equal(
 		Value.Check(tool.parameters, {
 			questions: [
@@ -133,7 +120,7 @@ test("prompt mode selects fixed compact text at load and preserves all other sch
 	);
 });
 
-test("compact schema limits questions to four without limiting full mode", () => {
+test("schema limits questions to four", () => {
 	const questions = Array.from({ length: 5 }, (_, index) => ({
 		id: `q${index}`,
 		prompt: "Pick",
@@ -146,18 +133,9 @@ test("compact schema limits questions to four without limiting full mode", () =>
 		true
 	);
 	assert.equal(Value.Check(compact.tools[0].parameters, { questions }), false);
-	assert.equal(
-		Value.Check(full.tools[0].parameters, {
-			questions: questions.map((question) => ({
-				...question,
-				options: [{ value: "offline", label: "Offline only" }],
-			})),
-		}),
-		true
-	);
 });
 
-test("compact preparation fills only missing values and avoids explicit and derived collisions", () => {
+test("option preparation fills only missing values and avoids explicit and derived collisions", () => {
 	const options = compact.prepared.questions[0].options;
 	assert.deepEqual(
 		options.map((option: { value: string }) => option.value),
@@ -171,41 +149,33 @@ test("compact preparation fills only missing values and avoids explicit and deri
 	assert.match(compact.response.text, derivedValuePattern);
 	assert.match(compact.blankResponse, blankValuePattern);
 	assert.match(compact.invalidResponse, blankValuePattern);
-	assert.equal(full.prepared.questions[0].options[0].value, undefined);
-	assert.equal(Value.Check(full.tools[0].parameters, full.prepared), false);
-	assert.match(full.response.text, missingValuePattern);
 });
 
-test("compact preparation strips accents from derived values", () => {
-	const prepared = prepareAskParams(
-		{
-			questions: [
-				{
-					id: "q",
-					prompt: "Pick",
-					options: [{ label: "Résumé" }, { label: "Zürich office" }],
-				},
-			],
-		},
-		true
-	) as { questions: Array<{ options: Array<{ value: string }> }> };
+test("option preparation strips accents from derived values", () => {
+	const prepared = prepareAskParams({
+		questions: [
+			{
+				id: "q",
+				prompt: "Pick",
+				options: [{ label: "Résumé" }, { label: "Zürich office" }],
+			},
+		],
+	}) as { questions: Array<{ options: Array<{ value: string }> }> };
 	assert.deepEqual(
 		prepared.questions[0].options.map((option) => option.value),
 		["resume", "zurich-office"]
 	);
 });
 
-test("unset and empty select compact by default; unknown mode warns once and uses compact", () => {
-	assert.notDeepEqual(compact.tools, full.tools);
+test("environment values cannot change the registered tool", () => {
 	for (const mode of [undefined, "", "not-a-mode"]) {
 		const actual = registeredText(mode);
 		assert.deepEqual(actual.tools, compact.tools, String(mode));
-		assert.equal(actual.warnings.length, mode === "not-a-mode" ? 1 : 0);
+		assert.deepEqual(actual.warnings, []);
 	}
-	assert.deepEqual(full.warnings, []);
 });
 
-test("compact rule inventory has a single observed home for each rule", () => {
+test("rule inventory has a single observed home for each rule", () => {
 	const tool = compact.tools[0];
 	const descriptions: Record<string, string> = {};
 	function collect(node: unknown, path: string) {
@@ -235,7 +205,7 @@ test("compact rule inventory has a single observed home for each rule", () => {
 		"result.elaborated": compact.elaborated,
 		...descriptions,
 	};
-	// Inventory from the compact-mode rule allocation in spec #1.
+	// Inventory from the rule allocation in spec #1.
 	// The config home is its trigger text.
 	const rules: [string, string, string][] = [
 		["G1", "guideline.1", "before preference-sensitive decisions"],
@@ -311,7 +281,7 @@ test("compact rule inventory has a single observed home for each rule", () => {
 const sentenceBoundary = /(?<=\.)\s+/;
 const whitespace = /\s+/g;
 
-test("no normalized rule sentence occurs twice in compact registered tool text", () => {
+test("no normalized rule sentence occurs twice in registered tool text", () => {
 	const sentences: string[] = [];
 	function add(text: string) {
 		for (const sentence of text.split(sentenceBoundary)) {

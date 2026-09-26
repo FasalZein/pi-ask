@@ -1,6 +1,16 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFileSync, spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
+import {
+	cp,
+	mkdir,
+	mkdtemp,
+	readFile,
+	rm,
+	symlink,
+	writeFile,
+} from "node:fs/promises";
+import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,7 +39,7 @@ function option(flag, fallback) {
 	return args[index + 1];
 }
 const models = option("--models", [base, ...reportOnly].join(",")).split(",");
-const modes = option("--modes", "full,compact").split(",");
+const modes = option("--modes", "upstream,fork").split(",");
 const selected = option("--case", "all");
 const repeats = option("--repeats", "default");
 const outputDir =
@@ -38,7 +48,7 @@ const outputDir =
 const timeoutMs = Number(process.env.PI_ASK_BEHAVIOR_TIMEOUT_MS ?? 120_000);
 if (
 	models.some((m) => !(m.includes("/") && m.split("/")[1])) ||
-	modes.some((m) => !["full", "compact"].includes(m)) ||
+	modes.some((m) => !["upstream", "fork"].includes(m)) ||
 	!Number.isSafeInteger(timeoutMs) ||
 	timeoutMs <= 0 ||
 	(repeats !== "default" &&
@@ -57,6 +67,12 @@ if (
 const configDoc = /docs\/configuration\.md/;
 const planMarker = /(?:^|\n)PLAN:/i;
 await mkdir(outputDir, { recursive: true });
+const upstreamCopy = modes.includes("upstream")
+	? await copyUpstream()
+	: undefined;
+const upstreamEntry = upstreamCopy
+	? join(upstreamCopy, "src/index.ts")
+	: undefined;
 const batch = `${new Date().toISOString().replace(/[:.]/g, "-")}-${process.pid}`;
 batchRuns: for (const model of models) {
 	for (const mode of modes) {
@@ -78,6 +94,7 @@ batchRuns: for (const model of models) {
 						behavior,
 						run,
 						timeoutMs,
+						upstreamEntry,
 					});
 					await writeFile(path, `${JSON.stringify(record, null, 2)}\n`);
 					console.log(
@@ -95,6 +112,46 @@ batchRuns: for (const model of models) {
 				}
 			}
 		}
+	}
+}
+
+if (upstreamCopy) {
+	await rm(upstreamCopy, { recursive: true, force: true });
+}
+
+async function copyUpstream() {
+	const npmRoot = join(
+		process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi/agent"),
+		"npm"
+	);
+	const require = createRequire(join(npmRoot, "package.json"));
+	let manifest;
+	try {
+		manifest = require.resolve("@eko24ive/pi-ask/package.json");
+	} catch {
+		// Pi owns the npm cache. Its extension resolver installs an absent package.
+		execFileSync("pi", ["-e", "npm:@eko24ive/pi-ask@1.2.0", "--help"], {
+			stdio: "ignore",
+			timeout: 30_000,
+		});
+		manifest = require.resolve("@eko24ive/pi-ask/package.json");
+	}
+	const packageInfo = JSON.parse(readFileSync(manifest, "utf8"));
+	if (packageInfo.version !== "1.2.0") {
+		throw new Error(`Expected upstream 1.2.0, found ${packageInfo.version}`);
+	}
+	const destination = await mkdtemp(join(tmpdir(), "pi-ask-upstream-"));
+	try {
+		await cp(dirname(manifest), destination, { recursive: true });
+		await symlink(
+			join(root, "node_modules"),
+			join(destination, "node_modules"),
+			"dir"
+		);
+		return destination;
+	} catch (error) {
+		await rm(destination, { recursive: true, force: true });
+		throw error;
 	}
 }
 
@@ -212,8 +269,10 @@ function checkRpcStatus(events, status, finished, buffer, stderr) {
 
 function spawnRpc(model, mode, caseId, tracePath) {
 	const env = { ...process.env };
-	env.PI_ASK_PROMPT_MODE = mode;
 	env.PI_ASK_BEHAVIOR_TRACE = tracePath;
+	if (upstreamEntry) {
+		env.PI_ASK_BEHAVIOR_UPSTREAM_ENTRY = upstreamEntry;
+	}
 	env.PI_ASK_BEHAVIOR_CASE = caseId;
 	return spawn(
 		"pi",
@@ -229,7 +288,9 @@ function spawnRpc(model, mode, caseId, tracePath) {
 			"--tools",
 			"read,ask_user",
 			"-e",
-			join(root, "src/index.ts"),
+			mode === "upstream"
+				? join(root, "scripts/behavior/upstream-rpc.ts")
+				: join(root, "src/index.ts"),
 			"-e",
 			join(root, "scripts/behavior/bridge.ts"),
 			"--model",
@@ -339,6 +400,9 @@ async function buildRecord({
 		)
 		.join("\n");
 	const asks = calls.filter((c) => c.name === "ask_user");
+	if (asks.length > 0 && !trace.some((event) => event.kind === "started")) {
+		throw new Error("Bridge failure: ask_user ran without a started event");
+	}
 	const questions = asks.flatMap((c) => c.args?.questions ?? []);
 	return {
 		model,

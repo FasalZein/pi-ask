@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-// Each process loads the extension once, as pi does when selecting the prompt mode.
+// Each process loads the extension once, as pi does.
 const probe = `
 import askExtension from "./src/index.ts";
 const active = ["read", "ask_user", "bash"];
@@ -32,9 +32,8 @@ for (const mode of ["print", "json", "rpc", "tui"]) {
 console.log(JSON.stringify(results));
 `;
 
-function activeTools(mode: "compact" | "full") {
+function activeTools() {
 	const env = { ...process.env };
-	env.PI_ASK_PROMPT_MODE = mode;
 	const result = spawnSync(
 		process.execPath,
 		["--input-type=module", "--eval", probe],
@@ -52,11 +51,9 @@ function activeTools(mode: "compact" | "full") {
 	}>;
 }
 
-// Headless compact sessions keep ask_user so the model gets the "Needs user input" result and stops (#54).
-for (const promptMode of ["compact", "full"] as const) {
-	test(`${promptMode} mode leaves every active tool unchanged in every session mode`, () => {
-		for (const { mode, initial, active } of activeTools(promptMode)) {
-			assert.deepEqual(active, initial, `${mode} with ${initial.join(", ")}`);
-		}
-	});
-}
+// Headless sessions keep ask_user so the model gets the "Needs user input" result (#54).
+test("every session mode leaves active tools unchanged", () => {
+	for (const { mode, initial, active } of activeTools()) {
+		assert.deepEqual(active, initial, `${mode} with ${initial.join(", ")}`);
+	}
+});

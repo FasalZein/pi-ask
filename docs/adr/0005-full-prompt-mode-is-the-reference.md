@@ -1,6 +1,6 @@
 # Full prompt mode is the reference; compact mode is opt-in
 
-Status: default superseded by ADR 0007 (compact is the default). Full mode remains the frozen reference.
+Status: Superseded by [ADR 0008](0008-compact-is-the-only-prompt-mode.md).
 
 pi-ask keeps two shapes of model-facing text. Full mode is the default. It is the upstream v1.2.0 text, with only the package name and doc path in the config sentence changed, and a golden test pins it byte for byte. Compact mode (`PI_ASK_PROMPT_MODE=compact`) states each rule once, in the place where the model reads it when it applies. pi-ask reads the mode once at load, because registering `ask_user` again with different text is a tool redefinition that can invalidate the provider's cached prefix.
 

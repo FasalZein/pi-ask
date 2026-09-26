@@ -37,7 +37,7 @@ test("unrelated prompts do not trigger configuration advice", () => {
 	);
 });
 
-// A separate process selects compact mode before the extension module loads.
+// A separate process exercises the registered handler as pi does.
 const probe = `
 import askExtension from "./src/index.ts";
 const handlers = new Map();
@@ -70,9 +70,9 @@ const projected = await beforeStart({ prompt: "ask_user keybinding", systemPromp
 console.log(JSON.stringify({ first, repeated, afterCompaction, quiet, projected }));
 `;
 
-test("compact extension sends hidden advice once per active context, including pre-0.87 fallback", () => {
+test("registered handler never replaces the system prompt and sends conditional advice", () => {
 	const env = { ...process.env };
-	env.PI_ASK_PROMPT_MODE = "compact";
+	env.PI_ASK_PROMPT_MODE = "full";
 	const result = spawnSync(
 		process.execPath,
 		["--input-type=module", "--eval", probe],
@@ -86,7 +86,9 @@ test("compact extension sends hidden advice once per active context, including p
 	const { first, repeated, afterCompaction, quiet, projected } = JSON.parse(
 		result.stdout
 	);
-	assert.equal("systemPrompt" in first, false);
+	for (const result of [first, repeated, afterCompaction, quiet, projected]) {
+		assert.equal("systemPrompt" in result, false);
+	}
 	assert.equal(first.message.customType, "pi_ask_config");
 	assert.equal(first.message.display, false);
 	assert.match(first.message.content, CONFIG_DOC_REFERENCE);

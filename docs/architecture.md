@@ -23,7 +23,8 @@ The codebase is split so the implementation reads through file boundaries and na
 - `src/resume-pending-ask.ts` — detached lifecycle wiring and recovered answer delivery
 - `src/notifications.ts` — best-effort ask notification payload rendering and channel execution
 - `src/remote-ask.ts` — package-prefixed local event contract, active-flow registry, and explicit remote submission validation
-- `src/schema.ts` — TypeBox schema
+- `src/schema.ts` — validated internal and extraction TypeBox schemas
+- `src/prompt-text.ts` — single public tool schema, guidelines, and conditional config sentence
 - `src/types.ts` — shared types
 
 ### State

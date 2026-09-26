@@ -1,4 +1,3 @@
-import "./fixtures/full-prompt-mode.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { successfulResponse } from "../src/ask-tool-helpers.ts";
@@ -114,7 +113,7 @@ test("elaboration notes add skill paths without altering the recorded note", () 
 	const response = successfulResponse(result, commands);
 	assert.equal(
 		response.content[0].text,
-		'User asked to elaborate on question "Choose" with note "Explain /skill:tdd"\nRead skill /skill:tdd: /skills/tdd/SKILL.md'
+		'User asked to elaborate on question "Choose" with note "Explain /skill:tdd"\nFirst answer the user\'s note directly using the question and option context; re-ask only the affected question if a choice is still needed.\nRead skill /skill:tdd: /skills/tdd/SKILL.md'
 	);
 	assert.deepEqual(response.details.resolvedSkills, [
 		{ name: "tdd", path: "/skills/tdd/SKILL.md" },

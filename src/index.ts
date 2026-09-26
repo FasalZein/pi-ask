@@ -11,21 +11,14 @@ import {
 	matchesConfigPrompt,
 } from "./config-trigger.ts";
 import { registerAskEntryRenderers } from "./entry-renderers.ts";
-import { PI_ASK_CONFIG_PROMPT, promptMode } from "./prompt-text.ts";
+import { PI_ASK_CONFIG_PROMPT } from "./prompt-text.ts";
 import { registerRecoveryContext } from "./recovery-context.ts";
 import { createRemoteAskRuntime } from "./remote-ask.ts";
 import { registerPendingAskResume } from "./resume-pending-ask.ts";
 
 export default async function askExtension(pi: ExtensionAPI) {
 	resetAskConfigStore();
-	// Keep the handler asynchronous for the full-mode golden test's registered-handler contract.
-	// biome-ignore lint/suspicious/useAwait: preserve the existing async handler shape.
-	pi.on("before_agent_start", async (event, ctx) => {
-		if (promptMode === "full") {
-			return {
-				systemPrompt: `${event.systemPrompt}\n\n${PI_ASK_CONFIG_PROMPT}`,
-			};
-		}
+	pi.on("before_agent_start", (event, ctx) => {
 		if (
 			matchesConfigPrompt(event.prompt) &&
 			!hasActiveConfigMessage(ctx.sessionManager)
