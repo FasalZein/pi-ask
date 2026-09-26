@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-// A new process models loading pi-ask once with the chosen prompt mode.
+// A new process exercises the registered tool.
 const probe = `
 import { registerAskTool } from "./src/ask-tool.ts";
 import { DEFAULT_ASK_CONFIG } from "./src/config/defaults.ts";
@@ -46,9 +46,8 @@ console.log(JSON.stringify(Object.fromEntries(Object.entries(cases).map(([name, 
 }]))));
 `;
 
-function run(mode: string) {
+function run() {
 	const env = { ...process.env };
-	env.PI_ASK_PROMPT_MODE = mode;
 	const result = spawnSync(
 		process.execPath,
 		["--input-type=module", "--eval", probe],
@@ -69,17 +68,12 @@ function run(mode: string) {
 const answerFirstLine =
 	"First answer the user's note directly using the question and option context; re-ask only the affected question if a choice is still needed.";
 
-test("only compact elaborate results carry one answer-first instruction", () => {
-	const full = run("full");
-	const compact = run("compact");
-	assert.equal(full.submitted.content, "Goal: Speed");
-	assert.equal(full.elaborated.mode, "elaborate");
-	assert.equal(compact.submitted.content, full.submitted.content);
-	assert.equal(
-		compact.elaborated.content,
-		`${full.elaborated.content}\n${answerFirstLine}`
-	);
-	assert.equal(compact.elaborated.content.split(answerFirstLine).length, 2);
+test("elaborate results carry one answer-first instruction without changing other results", () => {
+	const results = run();
+	assert.equal(results.submitted.content, "Goal: Speed");
+	assert.equal(results.elaborated.mode, "elaborate");
+	assert.ok(results.elaborated.content.includes("User asked to elaborate"));
+	assert.equal(results.elaborated.content.split(answerFirstLine).length, 2);
 	for (const kind of [
 		"cancelled",
 		"cancelledElaborate",
@@ -87,10 +81,8 @@ test("only compact elaborate results carry one answer-first instruction", () => 
 		"unavailable",
 		"aborted",
 	]) {
-		assert.equal(compact[kind].content, full[kind].content, kind);
-		assert.equal(compact[kind].cancelled, true, kind);
+		assert.equal(results[kind].cancelled, true, kind);
+		assert.equal(results[kind].content.includes(answerFirstLine), false, kind);
 	}
-	for (const kind of Object.keys(full)) {
-		assert.equal(compact[kind].rendered, full[kind].rendered, kind);
-	}
+	assert.equal(results.elaborated.rendered.includes(answerFirstLine), false);
 });

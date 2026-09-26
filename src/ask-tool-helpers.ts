@@ -1,7 +1,7 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { UI_DIMENSIONS } from "./constants/ui.ts";
-import { COMPACT_ELABORATION_INSTRUCTION, promptMode } from "./prompt-text.ts";
+import { ASK_ELABORATION_INSTRUCTION } from "./prompt-text.ts";
 import { renderResultText } from "./result.ts";
 import {
 	resolveSkillReferences,
@@ -103,10 +103,8 @@ export function successfulResponse(
 				type: "text" as const,
 				text:
 					summarizeResult(result) +
-					(promptMode === "compact" &&
-					!result.cancelled &&
-					result.mode === "elaborate"
-						? `\n${COMPACT_ELABORATION_INSTRUCTION}`
+					(!result.cancelled && result.mode === "elaborate"
+						? `\n${ASK_ELABORATION_INSTRUCTION}`
 						: "") +
 					resolvedSkills
 						.map(({ name, path }) => `\nRead skill /skill:${name}: ${path}`)

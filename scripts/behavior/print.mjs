@@ -12,7 +12,6 @@ export async function executePrint({
 	timeoutMs,
 }) {
 	const env = { ...process.env };
-	env.PI_ASK_PROMPT_MODE = mode;
 	const child = spawn(
 		"pi",
 		[
@@ -28,7 +27,9 @@ export async function executePrint({
 			"--tools",
 			"read,ask_user",
 			"-e",
-			join(root, "src/index.ts"),
+			mode === "upstream"
+				? "npm:@eko24ive/pi-ask@1.2.0"
+				: join(root, "src/index.ts"),
 			"--model",
 			model,
 			"--",

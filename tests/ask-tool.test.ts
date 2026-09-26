@@ -1,4 +1,3 @@
-import "./fixtures/full-prompt-mode.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Value } from "typebox/value";
@@ -641,10 +640,7 @@ test("public schema requires semantic identifiers and labels", () => {
 	assert.deepEqual(tool.parameters.required, ["questions"]);
 	const questionSchema = tool.parameters.properties.questions.items;
 	assert.deepEqual(questionSchema.required, ["id", "prompt", "options"]);
-	assert.deepEqual(questionSchema.properties.options.items.required, [
-		"value",
-		"label",
-	]);
+	assert.deepEqual(questionSchema.properties.options.items.required, ["label"]);
 
 	const missingLabel = {
 		questions: [

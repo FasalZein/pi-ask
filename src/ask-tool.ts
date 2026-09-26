@@ -18,14 +18,10 @@ import {
 	ASK_TOOL_DESCRIPTION,
 	ASK_TOOL_PROMPT_GUIDELINES,
 	ASK_TOOL_PROMPT_SNIPPET,
-	COMPACT_TOOL_DESCRIPTION,
-	COMPACT_TOOL_PROMPT_GUIDELINES,
-	CompactAskParamsSchema,
-	promptMode,
+	AskToolParamsSchema,
 } from "./prompt-text.ts";
 import type { RemoteAskRuntime } from "./remote-ask.ts";
 import { runRpcAskFlow } from "./rpc-ask.ts";
-import { AskParamsSchema } from "./schema.ts";
 import { prepareAskParams } from "./state/normalize.ts";
 import { summarizeResult, toAskResult } from "./state/result.ts";
 import type { AskParams, AskState } from "./types.ts";
@@ -40,19 +36,11 @@ export function registerAskTool(
 		executionMode: "sequential",
 		name: "ask_user",
 		label: "Ask User",
-		description:
-			promptMode === "compact"
-				? COMPACT_TOOL_DESCRIPTION
-				: ASK_TOOL_DESCRIPTION,
+		description: ASK_TOOL_DESCRIPTION,
 		promptSnippet: ASK_TOOL_PROMPT_SNIPPET,
-		promptGuidelines:
-			promptMode === "compact"
-				? [...COMPACT_TOOL_PROMPT_GUIDELINES]
-				: [...ASK_TOOL_PROMPT_GUIDELINES],
-		parameters:
-			promptMode === "compact" ? CompactAskParamsSchema : AskParamsSchema,
-		prepareArguments: (args) =>
-			prepareAskParams(args, promptMode === "compact") as AskParams,
+		promptGuidelines: [...ASK_TOOL_PROMPT_GUIDELINES],
+		parameters: AskToolParamsSchema,
+		prepareArguments: (args) => prepareAskParams(args) as AskParams,
 		execute: (toolCallId, params, signal, onUpdate, ctx) =>
 			executeAskTool(
 				pi,

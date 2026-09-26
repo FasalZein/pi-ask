@@ -7,7 +7,6 @@ import type {
 import { Value } from "typebox/value";
 import { findPayloadForSourceEntry } from "./ask-payload-store.ts";
 import { validateParams } from "./ask-tool-helpers.ts";
-import { promptMode } from "./prompt-text.ts";
 import { AskParamsSchema } from "./schema.ts";
 import { prepareAskParams } from "./state/normalize.ts";
 import type { AskParams } from "./types.ts";
@@ -28,9 +27,7 @@ export function appendPendingAskDismissal(
 }
 
 export function findPendingAskToolCall(
-	ctx: Pick<ExtensionContext, "sessionManager">,
-	// Recovery must accept the same calls the tool accepts in this mode.
-	fillMissingValues = promptMode === "compact"
+	ctx: Pick<ExtensionContext, "sessionManager">
 ): PendingAskToolCall | undefined {
 	const branch = ctx.sessionManager.getBranch();
 	const resolvedToolCallIds = collectResolvedToolCallIds(branch);
@@ -44,7 +41,7 @@ export function findPendingAskToolCall(
 			continue;
 		}
 
-		const params = resolvePendingAskParams(ctx, toolCall, fillMissingValues);
+		const params = resolvePendingAskParams(ctx, toolCall);
 		if (params) {
 			return { params, toolCallId: toolCall.id };
 		}
@@ -100,18 +97,14 @@ function findUnresolvedAskToolCall(
 
 function resolvePendingAskParams(
 	ctx: Pick<ExtensionContext, "sessionManager">,
-	toolCall: ToolCall,
-	fillMissingValues: boolean
+	toolCall: ToolCall
 ): AskParams | undefined {
 	const persistedPayload = findPayloadForSourceEntry(ctx, toolCall.id, "tool");
 	if (persistedPayload) {
 		return persistedPayload.params;
 	}
 
-	const argumentsFallback = prepareAskParams(
-		toolCall.arguments,
-		fillMissingValues
-	);
+	const argumentsFallback = prepareAskParams(toolCall.arguments);
 	if (
 		Value.Check(AskParamsSchema, argumentsFallback) &&
 		validateParams(argumentsFallback).ok

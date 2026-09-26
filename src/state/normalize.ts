@@ -38,10 +38,7 @@ export function collectValidationIssues(
 	return collector.issues;
 }
 
-export function prepareAskParams(
-	input: unknown,
-	fillMissingValues = false
-): unknown {
+export function prepareAskParams(input: unknown): unknown {
 	if (!(isRecord(input) && Array.isArray(input.questions))) {
 		return input;
 	}
@@ -52,9 +49,6 @@ export function prepareAskParams(
 				return question;
 			}
 			const options = question.options.map(prepareOption);
-			if (!fillMissingValues) {
-				return { ...question, options };
-			}
 			const used = new Set(
 				options
 					.filter(isRecord)

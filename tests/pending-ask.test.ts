@@ -174,7 +174,7 @@ test("pending ask scan prefers its valid persisted payload", () => {
 	assert.equal(pending?.params, persistedParams);
 });
 
-test("pending ask fallback fills missing option values only when the mode fills them", () => {
+test("pending ask fallback fills missing option values", () => {
 	const valueless = {
 		questions: [
 			{
@@ -186,9 +186,8 @@ test("pending ask fallback fills missing option values only when the mode fills 
 	};
 	const branch = scannerContext([askToolCall("call-1", valueless)]);
 
-	assert.equal(findPendingAskToolCall(branch, false), undefined);
 	assert.deepEqual(
-		findPendingAskToolCall(branch, true)?.params.questions[0].options.map(
+		findPendingAskToolCall(branch)?.params.questions[0].options.map(
 			(option) => option.value
 		),
 		["canvas", "svg"]

@@ -4,9 +4,9 @@
 
 This document defines the stable external behavior. It does not explain internal helper-by-helper implementation.
 
-## Prompt mode
+## Model-facing tool text
 
-The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. `full` keeps the upstream v1.2.0 description, guidelines, and parameter schema. Unset, empty, and `compact` select compact mode, the default. It uses a shorter description, two guidelines, and instructional option `label` and `recommended` descriptions. The `questions` description matches upstream. Its question schema permits up to four questions and omits option `value`. The tool snippet and other parameter descriptions remain unchanged. Unknown values use compact mode and log one warning. The tool definition does not change between turns. Compact mode places general follow-up rules in guideline 2, not in the `questions` description. If a choice remains after an answer or note, agents use a structured follow-up instead of plain-text choices. When prior answers narrow the branch, agents bundle 2-3 related unresolved decisions when possible and ask one at a time only when the next question materially depends on the previous answer. Results do not carry a general follow-up hint, including recovery and command-flow deliveries. Only compact elaborate results add one answer-first instruction to model-facing content: `First answer the user's note directly using the question and option context; re-ask only the affected question if a choice is still needed.` This instruction does not change transcript rendering or full-mode content. Conditional configuration guidance is active in compact mode.
+The extension uses one concise tool description and two guidelines. The question schema permits up to four questions and omits option `value`. It derives unique machine values from labels while accepting valid explicit values from older calls. General follow-up rules live in guideline 2. Elaborate results add an answer-first instruction to model-facing content without changing transcript rendering. Configuration guidance is conditional; the system prompt is never replaced.
 
 ## Input
 
@@ -20,7 +20,6 @@ The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. `full` k
     type?: "single" | "multi" | "preview";
     required?: boolean;
     options: Array<{
-      value: string;
       label: string;
       description?: string;
       preview?: string;
@@ -30,7 +29,7 @@ The extension selects tool text once at load from `PI_ASK_PROMPT_MODE`. `full` k
 }
 ```
 
-This input shape shows full mode. In compact mode, the tool schema has no option `value` property. Supply a label; the tool derives a unique machine value before execution. Valid explicit values from older calls remain accepted.
+The public tool schema has no option `value` property. Supply a label; the tool derives a unique machine value before execution. Valid explicit values from older calls remain accepted.
 
 ## Input rules
 
@@ -38,7 +37,7 @@ This input shape shows full mode. In compact mode, the tool schema has no option
 - every question must have non-empty trimmed `id` and `prompt`
 - every question must have at least one option
 - question ids must be unique within one tool call
-- option `value`s must be unique within a question; in compact mode, values derive from label slugs and avoid collisions with valid explicit and derived values in that question
+- option `value`s must be unique within a question; missing values derive from label slugs and avoid collisions with valid explicit and derived values in that question
 - blank optional `title`, question `label`, option `description`, and option `preview` fields are treated as omitted
 - question `label` falls back to `Q1`, `Q2`, ...
 - option `label` is required in the public schema; before schema validation, a missing or blank string label is derived from a non-empty `value` by replacing hyphens and underscores with spaces and capitalizing the first character
@@ -206,7 +205,7 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 - every elaboration item includes the full normalized question and option list for that question so referential notes like `above` remain understandable to the agent
 - option-targeted elaboration items include the specific noted option plus whether it is currently selected
 - question-targeted elaboration items include whether the question already has a committed answer
-- `elaboration.instruction` tells the agent to answer the clarification directly first, then re-ask only the affected questions if a choice is still needed; in compact mode only, elaborate result `content` also carries the short answer-first instruction so the model receives it
+- `elaboration.instruction` tells the agent to answer the clarification directly first, then re-ask only the affected questions if a choice is still needed; elaborate result `content` also carries the short answer-first instruction so the model receives it
 - when a choice is still needed after an answer or note, agents should use another structured `ask_user` call, not plain-text choices
 - when prior answers narrow the branch, agents should bundle the next 2-3 related unresolved decisions into one follow-up when possible; ask one at a time only when the next question materially depends on the previous answer
 - `elaboration` is only present when `mode === "elaborate"`
@@ -294,17 +293,17 @@ While an interactive ask flow is open, pi-ask sets the `pi-ask` footer status an
 
 `ask_user` requests sequential execution. When one assistant message calls it alongside other tools, pi runs the entire batch one call at a time. A pre-aborted call does not open the UI; aborting an open flow closes it and emits the remote `completed` event. On session shutdown, open flows close. An interrupted recovered ask has no dismissal marker or tool result, so startup can reopen it again.
 
-## Compact-mode configuration advice
+## Configuration advice
 
-In compact mode, pi-ask leaves the system prompt unchanged. When the expanded user prompt mentions `pi-ask`, `ask_user`, `ask-user`, `/ask-settings`, `ask settings`, `/answer`, `/ask:replay`, `keymap`, or `keybinding` (case-insensitive), pi-ask sends the configuration-doc sentence as a hidden model-facing message. It sends only one copy while that message remains in the model context, and sends it again after compaction removes it. A typed `/ask-settings` extension command runs before prompt matching and does not trigger this message. Full mode continues to append the sentence to the system prompt on every run.
+Pi-ask leaves the system prompt unchanged. When the expanded user prompt mentions `pi-ask`, `ask_user`, `ask-user`, `/ask-settings`, `ask settings`, `/answer`, `/ask:replay`, `keymap`, or `keybinding` (case-insensitive), pi-ask sends the configuration-doc sentence as a hidden model-facing message. It sends only one copy while that message remains in the model context, and sends it again after compaction removes it. A typed `/ask-settings` extension command runs before prompt matching and does not trigger this message.
 
 ## Non-TUI and non-interactive modes
 
-pi-ask never changes the active tool list, in either prompt mode. Print and JSON sessions keep `ask_user` active, so a model that needs a user decision gets the `Needs user input` result below and can stop. The compact configuration-doc trigger also runs in headless sessions when the user's prompt matches.
+pi-ask never changes the active tool list. Print and JSON sessions keep `ask_user` active, so a model that needs a user decision gets the `Needs user input` result below and can stop. The configuration-doc trigger also runs in headless sessions when the user's prompt matches.
 
 The rich ask flow uses `ctx.ui.custom()` only in TUI mode. In RPC mode with a UI, pi-ask uses pi dialogs: single and preview options show labels and preview text before selection, multi options use repeated checkbox-prefixed selects with Done, and custom answers use input. The last select offers Submit or Cancel. Dismissing any dialog cancels as `user`; aborting cancels as `aborted`. RPC does not offer notes or Elaborate. Every dialog receives an abort signal. If `ask_user` is called directly without an interactive UI, it keeps the existing `Needs user input: ask_user requires interactive TUI mode.` content and `cancelReason: "ui_unavailable"` details.
 
-The full-mode public schema requires question `id` and `prompt` plus option `value` and `label`. The compact-mode schema requires `id`, `prompt`, and `label`, caps questions at four, and has no option `value` property. Before schema validation, the tool derives a missing option value from a slug of its label. Derived values are unique within each question, including against explicit values. For example, `Offline only` becomes `offline-only`; a collision gets a numeric suffix. Older calls with valid explicit values remain accepted; blank explicit values remain invalid. Both schemas restrict question `type` to `single`, `multi`, or `preview`, so malformed structural fields fail before execution. The tool still validates trimmed text, uniqueness, option counts, and preview requirements during execution and returns structured issues for those failures. Non-interactive results still show `Label [value]` so the user can identify the machine value for a manual answer; submitted answers still carry normalized values. Result rendering falls back to Pi's raw tool-error text when schema validation prevents execution.
+The public schema requires question `id` and `prompt` plus option `label`, caps questions at four, and has no option `value` property. Before schema validation, the tool derives a missing option value from a slug of its label. Derived values are unique within each question, including against explicit values. For example, `Offline only` becomes `offline-only`; a collision gets a numeric suffix. Older calls with valid explicit values remain accepted; blank explicit values remain invalid. The schema restricts question `type` to `single`, `multi`, or `preview`. The tool validates trimmed text, uniqueness, option counts, and preview requirements during execution and returns structured issues. Non-interactive results show `Label [value]`; submitted answers carry normalized values. Result rendering falls back to Pi's raw tool-error text when schema validation prevents execution.
 
 The ask flow subscribes to runtime settings updates while open. In practice, this means changing `Auto-submit when answered without notes`, `Confirm dismiss when dirty`, `Double-press review shortcuts`, `Notifications`, `Show footer hints`, resetting config to defaults, or reloading config-backed keymaps can affect the in-progress ask flow immediately instead of only future asks when the change is saved or otherwise applied in memory. Load-time migrations and invalid config handling do not rewrite, rename, or back up the config file; invalid files load defaults for the session and show a notice. `Present single-select as multi-select` is applied when an ask flow is created and does not rewrite question semantics for an already-open flow; use `main.changeQuestionType` for live per-question changes.
 

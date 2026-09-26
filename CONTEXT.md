@@ -85,20 +85,20 @@ _Avoid_: remote API, RPC API
 **Model-facing text**:
 Every string pi-ask adds to what the model receives: tool description, prompt snippet, prompt guidelines, parameter schema, config sentence, and tool result content.
 
-**Prompt mode**:
-The selected shape of model-facing text: `full` (identical to upstream v1.2.0) or `compact` (each rule stated once, in the place the model reads it when it applies).
+**Prompt format**:
+One concise fork format; the upstream npm package is the behavior comparison baseline.
 
 **Rule**:
 One model-facing instruction about when or how to use `ask_user`.
 
 **Rule home**:
-The single place where a rule lives in compact prompt mode.
+The single place where a rule lives in the prompt format.
 
 **Config sentence**:
 The model-facing instruction to read the pi-ask configuration doc before changing pi-ask settings or keymaps.
 
 **Follow-up rules**:
-The rules for asking again when a choice is still needed after an answer or note: use another structured `ask_user` call instead of plain-text choices. When prior answers narrow the branch, bundle the next 2-3 related unresolved decisions when possible; ask one at a time only when the next question materially depends on the previous answer. In compact mode these rules live in guideline 2, not in the `questions` parameter description or results. A per-result hint was removed in #30 because it made models keep asking.
+The rules for asking again when a choice is still needed after an answer or note: use another structured `ask_user` call instead of plain-text choices. When prior answers narrow the branch, bundle the next 2-3 related unresolved decisions when possible; ask one at a time only when the next question materially depends on the previous answer. These rules live in guideline 2, not in the `questions` parameter description or results. A per-result hint was removed in #30 because it made models keep asking.
 _Avoid_: follow-up hint
 
 ### Verification
@@ -110,4 +110,4 @@ The model whose ask behavior must not regress for a model-facing text change to 
 The set of models, one per model family plus the base model, on which the behavior set runs.
 
 **Behavior set**:
-The fixed list of decision prompts, with scripted answers, used to compare ask behavior between prompt modes.
+The fixed list of decision prompts, with scripted answers, used to compare ask behavior between the fork and upstream package.
