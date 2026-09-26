@@ -1,4 +1,4 @@
-## Unreleased
+# [1.4.0](https://github.com/FasalZein/pi-ask/compare/v1.3.0...v1.4.0) (2026-09-26)
 
 ### BREAKING CHANGES
 
