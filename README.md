@@ -1,5 +1,3 @@
-![pi-ask main image](docs/media/pi-ask-main.png)
-
 # @fasalzein/pi-ask
 
 [![last commit](https://badgen.net/github/last-commit/FasalZein/pi-ask)](https://github.com/FasalZein/pi-ask/commits/main)
