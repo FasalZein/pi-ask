@@ -211,7 +211,10 @@ function renderEditorLine(
 	availableWidth: number,
 	theme: Theme
 ): string {
-	const innerWidth = Math.max(4, availableWidth - 2);
+	const innerWidth = Math.max(
+		4,
+		availableWidth - UI_DIMENSIONS.editorBarPadding
+	);
 	const truncated = truncateToWidth(line, innerWidth);
 	const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(truncated)));
 	return renderPersistentBackground(

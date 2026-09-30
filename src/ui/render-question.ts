@@ -76,7 +76,6 @@ function renderQuestionNote(
 			width: context.width,
 			theme: context.theme,
 			indent: " ",
-			padding: UI_DIMENSIONS.editorContentPadding,
 			placeholder: questionNote.placeholder,
 		});
 		lines.push("");
@@ -194,7 +193,7 @@ function renderWidePreviewLayout(
 	const leftWidth = measurePreviewLeftWidth(rows, width);
 	const rightWidth = Math.max(
 		UI_DIMENSIONS.previewMinRightWidth,
-		width - leftWidth - 2
+		width - leftWidth - 2 - UI_DIMENSIONS.contentRightMargin
 	);
 	const leftPane = renderPreviewOptionList(rows, theme, leftWidth, onOptionRow);
 	const rightPane = renderPreviewPaneContent(
@@ -232,7 +231,7 @@ function renderStackedPreviewLayout(
 	const previewBox = renderPreviewPaneContent(
 		selectedOption,
 		theme,
-		width,
+		width - UI_DIMENSIONS.contentRightMargin,
 		previewScrollTop,
 		previewScrollHint,
 		previewMaxRows,
@@ -276,10 +275,6 @@ function renderOptionDetail(
 		return;
 	}
 	const indent = options.indent ?? OPTION_SUBTITLE_INDENT;
-	const padding =
-		indent === " "
-			? UI_DIMENSIONS.editorContentPadding
-			: UI_DIMENSIONS.editorIndentedPadding;
 	if (detail.withGap && !options.suppressLeadingGap) {
 		lines.push("");
 	}
@@ -290,7 +285,6 @@ function renderOptionDetail(
 			width: context.width,
 			theme: context.theme,
 			indent,
-			padding,
 			placeholder: detail.placeholder,
 		});
 		return;
@@ -322,19 +316,24 @@ function renderEditorWithIndent(args: {
 	width: number;
 	theme: Theme;
 	indent: string;
-	padding: number;
 	placeholder: string;
 }) {
-	const { lines, editor, width, theme, indent, padding, placeholder } = args;
+	const { lines, editor, width, theme, indent, placeholder } = args;
+	const availableWidth =
+		width - visibleWidth(indent) - UI_DIMENSIONS.contentRightMargin;
 	renderEditorBlock({
 		lines,
+		// Wrap at the text width inside the background bar, or lines get "...".
 		editorLines: editor.render(
-			Math.max(UI_DIMENSIONS.editorMinWidth, width - padding)
+			Math.max(
+				UI_DIMENSIONS.editorMinWidth,
+				availableWidth - UI_DIMENSIONS.editorBarPadding
+			)
 		),
 		width,
 		theme,
 		indent,
-		availableWidth: width - visibleWidth(indent),
+		availableWidth,
 		placeholder,
 		isEmpty: editor.getText().length === 0,
 	});

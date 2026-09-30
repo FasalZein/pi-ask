@@ -1,9 +1,10 @@
 export const UI_DIMENSIONS = {
 	boxMinWidth: 10,
 	callLabelTruncateWidth: 50,
-	editorContentPadding: 5,
-	editorIndentedPadding: 7,
+	editorBarPadding: 2,
 	editorMinWidth: 8,
+	// Keeps editor bars and the preview box off the last column; some terminals extend its color into the padding.
+	contentRightMargin: 1,
 	previewWideMinWidth: 90,
 	previewMinRightWidth: 24,
 	previewLeftMinWidth: 22,
