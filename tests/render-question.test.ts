@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { createInitialState } from "../src/state/create.ts";
 import { getRenderableOptions } from "../src/state/selectors.ts";
 import {
@@ -9,6 +10,7 @@ import {
 	saveNote,
 } from "../src/state/transitions.ts";
 import { renderQuestionScreen } from "../src/ui/render-question.ts";
+import { SkillReferenceEditor } from "../src/ui/skill-reference-editor.ts";
 
 function mockTheme(onColor?: (color: string, text: string) => void) {
 	return {
@@ -432,4 +434,96 @@ for (const width of [100, 50]) {
 			"      Note: Self-host only",
 		]);
 	});
+}
+
+function realEditor(text: string) {
+	const identity = (value: string) => value;
+	const editor = new SkillReferenceEditor(
+		{
+			requestRender() {
+				/* No screen redraw is needed for the test. */
+			},
+			terminal: { rows: 40 },
+		} as never,
+		{
+			borderColor: identity,
+			selectList: {
+				description: identity,
+				noMatch: identity,
+				scrollInfo: identity,
+				selectedPrefix: identity,
+				selectedText: identity,
+			},
+		}
+	);
+	editor.setText(text);
+	return editor;
+}
+
+const LONG_TEXT =
+	"A long answer that runs well past the right edge so that we can check whether the editor wraps every word without cutting it off.";
+
+const openEditorStates = {
+	"option note": () =>
+		enterOptionNoteMode(
+			createInitialState({
+				questions: [
+					{
+						id: "q1",
+						prompt: "Pick one",
+						options: [{ value: "a", label: "A" }],
+					},
+				],
+			}),
+			"q1",
+			"a"
+		),
+	"custom answer": () =>
+		applyNumberShortcut(
+			createInitialState({
+				questions: [
+					{
+						id: "q1",
+						prompt: "Pick one",
+						options: [{ value: "a", label: "A" }],
+					},
+				],
+			}),
+			2
+		),
+	"question note": () =>
+		enterQuestionNoteMode(
+			createInitialState({
+				questions: [
+					{
+						id: "q1",
+						prompt: "Pick one",
+						options: [{ value: "a", label: "A" }],
+					},
+				],
+			}),
+			"q1"
+		),
+};
+
+for (const [name, makeState] of Object.entries(openEditorStates)) {
+	for (const width of [80, 120, 160]) {
+		test(`${name} editor wraps long text without ellipsis at width ${width}`, () => {
+			const state = makeState();
+			const lines: string[] = [];
+			renderQuestionScreen({
+				editor: realEditor(LONG_TEXT),
+				lines,
+				options: getRenderableOptions(state.questions[0]),
+				question: state.questions[0],
+				state,
+				theme: mockTheme(() => undefined),
+				width,
+			});
+			assert(lines.every((line) => visibleWidth(line) <= width));
+			assert(!lines.some((line) => line.includes("...")));
+			const flowed = lines.join(" ").replace(/\s+/g, " ");
+			assert(flowed.includes(LONG_TEXT));
+		});
+	}
 }
