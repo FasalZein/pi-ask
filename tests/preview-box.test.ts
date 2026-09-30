@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
 import { createInitialState } from "../src/state/create.ts";
+import { enterQuestionNoteMode } from "../src/state/transitions.ts";
 import { renderAskScreen } from "../src/ui/render.ts";
 
 const theme = {
@@ -176,4 +178,25 @@ test("a long option description cannot make the preview exceed 14 rows", () => {
 	);
 	assert(pane.length <= 14);
 	assert(pane.some((line) => line.includes("scroll")));
+});
+
+test("preview box and note editor bar share one right edge before the last column", () => {
+	const noteEditor = {
+		getText: () => "note",
+		render: (width: number) => ["─".repeat(width), "note", "─".repeat(width)],
+	} as never;
+	for (const width of [80, 184]) {
+		const lines = renderAskScreen({
+			config: DEFAULT_ASK_CONFIG,
+			state: enterQuestionNoteMode(state, "q"),
+			theme,
+			width,
+			editor: noteEditor,
+		});
+		const bar = lines.find((line) => line.startsWith("  note"));
+		const top = box(lines)[0];
+		assert(bar && top);
+		assert.equal(visibleWidth(bar), width - 1);
+		assert.equal(visibleWidth(top), width - 1);
+	}
 });

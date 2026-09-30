@@ -193,7 +193,7 @@ function renderWidePreviewLayout(
 	const leftWidth = measurePreviewLeftWidth(rows, width);
 	const rightWidth = Math.max(
 		UI_DIMENSIONS.previewMinRightWidth,
-		width - leftWidth - 2
+		width - leftWidth - 2 - UI_DIMENSIONS.contentRightMargin
 	);
 	const leftPane = renderPreviewOptionList(rows, theme, leftWidth, onOptionRow);
 	const rightPane = renderPreviewPaneContent(
@@ -231,7 +231,7 @@ function renderStackedPreviewLayout(
 	const previewBox = renderPreviewPaneContent(
 		selectedOption,
 		theme,
-		width,
+		width - UI_DIMENSIONS.contentRightMargin,
 		previewScrollTop,
 		previewScrollHint,
 		previewMaxRows,
@@ -320,7 +320,7 @@ function renderEditorWithIndent(args: {
 }) {
 	const { lines, editor, width, theme, indent, placeholder } = args;
 	const availableWidth =
-		width - visibleWidth(indent) - UI_DIMENSIONS.editorRightMargin;
+		width - visibleWidth(indent) - UI_DIMENSIONS.contentRightMargin;
 	renderEditorBlock({
 		lines,
 		// Wrap at the text width inside the background bar, or lines get "...".
