@@ -508,7 +508,7 @@ const openEditorStates = {
 
 for (const [name, makeState] of Object.entries(openEditorStates)) {
 	for (const width of [80, 120, 160]) {
-		test(`${name} editor wraps long text without ellipsis at width ${width}`, () => {
+		test(`${name} editor wraps long text inside the right margin at width ${width}`, () => {
 			const state = makeState();
 			const lines: string[] = [];
 			renderQuestionScreen({
@@ -520,7 +520,7 @@ for (const [name, makeState] of Object.entries(openEditorStates)) {
 				theme: mockTheme(() => undefined),
 				width,
 			});
-			assert(lines.every((line) => visibleWidth(line) <= width));
+			assert(lines.every((line) => visibleWidth(line) < width));
 			assert(!lines.some((line) => line.includes("...")));
 			const flowed = lines.join(" ").replace(/\s+/g, " ");
 			assert(flowed.includes(LONG_TEXT));

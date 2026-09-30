@@ -319,7 +319,8 @@ function renderEditorWithIndent(args: {
 	placeholder: string;
 }) {
 	const { lines, editor, width, theme, indent, placeholder } = args;
-	const availableWidth = width - visibleWidth(indent);
+	const availableWidth =
+		width - visibleWidth(indent) - UI_DIMENSIONS.editorRightMargin;
 	renderEditorBlock({
 		lines,
 		// Wrap at the text width inside the background bar, or lines get "...".
