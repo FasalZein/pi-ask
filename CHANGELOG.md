@@ -1,5 +1,22 @@
 # Changelog
 
+# 1.0.1 (2026-09-30)
+
+### Features
+
+* The Review tab shows a one-row action bar (`1 Submit │ 2 Elaborate │ 3 Cancel`) above numbered question blocks. ↑↓ moves between the actions.
+
+### Bug Fixes
+
+* Note and custom-answer editors wrap long text at word boundaries. Lines no longer lose their last characters to `...`.
+* Long answers and notes on the Review tab and long form titles wrap without `...`.
+* Editor bars and the preview box end 1 column before the right edge.
+* The stacked preview box starts at column 1, and box text has 1 space of padding on each side.
+* Side-by-side previews show each description once, in the box heading.
+* A blank row separates the prompt from the question note.
+* Editor placeholders read `Add a note` and `Type your answer`.
+* The settings overlay has square corners in pi's border color.
+
 # 1.0.0 (2026-09-27)
 
 This is the first release of the standalone repository `FasalZein/pi-ask`. pi-ask started as a fork of `@eko24ive/pi-ask` 1.2.0. The fork releases 1.3.0 and 1.4.0 and their history are in `FasalZein/pi-ask-fork-archive`.
