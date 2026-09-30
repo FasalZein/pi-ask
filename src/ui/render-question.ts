@@ -65,8 +65,8 @@ function renderQuestionNote(
 	questionNote: ReturnType<typeof buildQuestionScreenModel>["questionNote"],
 	context: QuestionRenderContext
 ) {
+	lines.push("");
 	if (!questionNote) {
-		lines.push("");
 		return;
 	}
 	if (questionNote.kind === "editor") {

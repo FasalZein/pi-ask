@@ -147,7 +147,7 @@ test("selected custom option keeps its label and renders editor below", () => {
 	assert(lines.some((line) => line.includes("Type your answer")));
 });
 
-test("open question note renders inline label and editor", () => {
+test("open question note renders one blank row below the prompt", () => {
 	const state = enterQuestionNoteMode(
 		createInitialState({
 			questions: [
@@ -178,7 +178,8 @@ test("open question note renders inline label and editor", () => {
 	const inputIndex = lines.findIndex((line) => line.includes("Add a note"));
 
 	assert.notEqual(promptIndex, -1);
-	assert.equal(inputIndex, promptIndex + 1);
+	assert.equal(inputIndex, promptIndex + 2);
+	assert.equal(lines[promptIndex + 1], "");
 	assert(!lines.some((line) => line.includes("Note:")));
 });
 
@@ -532,3 +533,20 @@ for (const [name, makeState] of Object.entries(openEditorStates)) {
 		});
 	}
 }
+
+test("saved question note sits one blank row below the prompt", () => {
+	let state = createInitialState({
+		questions: [
+			{ id: "q1", prompt: "Pick one", options: [{ value: "a", label: "A" }] },
+		],
+	});
+	state = enterQuestionNoteMode(state, "q1");
+	state = saveNote(state, "Keep it short");
+	const lines = plainQuestionLines(state, 80);
+	assert.deepEqual(lines.slice(0, 4), [
+		" Pick one",
+		"",
+		" Note: Keep it short",
+		"",
+	]);
+});

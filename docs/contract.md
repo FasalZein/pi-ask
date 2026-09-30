@@ -260,6 +260,7 @@ Main flow:
 - `main.confirm`, `main.cancel`, and `main.toggle` confirm, cancel, or toggle; defaults: `Enter`, `Esc`, `Space`
 - `main.changeQuestionType` changes the active question type (non-preview: `single <-> multi`; preview: `preview <-> multi`); default: `t`; destructive `multi -> single` changes require pressing the type hotkey again, with no timeout, and the pending confirmation clears on other navigation/actions
 - `main.optionNote` and `main.questionNote` open option/question notes; defaults: `n`, `Shift+N`
+- an open or saved question note sits one blank row below the prompt
 - question options and settings rows use the same ` ▶ ` focus pointer; multi-select options use `[ ]` and `[✓]`, and the question shows `Pick any · N of M selected` for predefined options (plus a selected custom answer, if any), followed by one blank line; saved option notes start in the same column as the option description
 - question footers show the configured up/down and next-tab navigation, plus fixed `1-9` shortcuts; editor footers do not advertise tab navigation
 - footers stay on one line: when the full hint list does not fit, hints are dropped in this order: up/down move, number keys (pick/toggle), type change, tab/back navigation; confirm, note, cancel/dismiss, and settings hints always stay and wrap only when even they do not fit
