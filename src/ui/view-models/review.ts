@@ -1,6 +1,4 @@
-import { visibleWidth } from "@earendil-works/pi-tui";
 import { SUBMIT_CHOICES } from "../../constants/text.ts";
-import { UI_DIMENSIONS, UI_TEXT } from "../../constants/ui.ts";
 import { isCustomOnlyAnswer } from "../../state/answers.ts";
 import {
 	type ReviewAnswer,
@@ -25,27 +23,17 @@ export interface ReviewQuestionModel {
 }
 
 export interface ReviewScreenModel {
-	actionColumnWidth: number;
 	actions: Array<{ label: string; selected: boolean }>;
-	layout: "stacked" | "wide";
 	questions: ReviewQuestionModel[];
 }
 
-export function buildReviewScreenModel(
-	state: AskState,
-	width: number
-): ReviewScreenModel {
+export function buildReviewScreenModel(state: AskState): ReviewScreenModel {
 	const showAllNotes = state.activeSubmitActionIndex === 1;
-	const actionColumnWidth = getSubmitActionColumnWidth();
 	return {
-		actionColumnWidth,
 		actions: SUBMIT_CHOICES.map((label, index) => ({
 			label,
 			selected: index === state.activeSubmitActionIndex,
 		})),
-		layout: shouldUseWideSubmitLayout(width, actionColumnWidth)
-			? "wide"
-			: "stacked",
 		questions: state.questions.map((question) =>
 			toReviewQuestionModel(
 				question.label,
@@ -79,22 +67,4 @@ function toReviewQuestionModel(
 			: undefined,
 		unanswered: answer.values.length === 0 && !answer.customText,
 	};
-}
-
-function getSubmitActionColumnWidth(): number {
-	return Math.max(
-		...SUBMIT_CHOICES.map((choice, index) =>
-			visibleWidth(`${UI_TEXT.cursor}${index + 1}. ${choice}`)
-		)
-	);
-}
-
-function shouldUseWideSubmitLayout(
-	width: number,
-	actionColumnWidth: number
-): boolean {
-	return (
-		width >= UI_DIMENSIONS.submitWideMinWidth &&
-		width - actionColumnWidth - 2 >= UI_DIMENSIONS.submitMinReviewWidth
-	);
 }

@@ -351,7 +351,7 @@ export function getFooterHints(
 			settings,
 		],
 		submit: [
-			move,
+			{ text: `${moveLabel} action`, dropRank: FOOTER_DROP_RANK.move },
 			{ text: footerHint(main.confirm, "confirm") },
 			{ text: "1-3 pick", dropRank: FOOTER_DROP_RANK.pick },
 			{

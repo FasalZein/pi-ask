@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { UI_DIMENSIONS } from "../src/constants/ui.ts";
 import { createInitialState } from "../src/state/create.ts";
 import {
 	applyNumberShortcut,
+	enterInputMode,
 	enterOptionNoteMode,
 	enterQuestionNoteMode,
 	saveNote,
+	submitCustomAnswer,
 } from "../src/state/transitions.ts";
 import { renderSubmitScreen } from "../src/ui/render-submit.ts";
 
@@ -24,34 +25,7 @@ function plainTheme() {
 	} as never;
 }
 
-test("submit screen renders the compact action labels without extra prompt copy", () => {
-	const state = createInitialState({
-		questions: [
-			{
-				id: "q1",
-				label: "Single",
-				prompt: "Pick one primary demo style.",
-				options: [{ value: "code", label: "Code demo" }],
-			},
-		],
-	});
-
-	const lines: string[] = [];
-	renderSubmitScreen(
-		lines,
-		state,
-		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth + 16
-	);
-
-	assert.equal(lines[0], " ▶ 1. Submit      Review answers");
-	assert.equal(lines[1], "   2. Elaborate  ");
-	assert.equal(lines[2], "   3. Cancel      Single");
-	assert(!lines.join("\n").includes("Submit answers?"));
-	assert(!lines.join("\n").includes("Submit answers"));
-});
-
-test("submit screen keeps review and actions grouped side by side on wide screens", () => {
+test("review shows one action bar above numbered question blocks", () => {
 	const state = createInitialState({
 		questions: [
 			{
@@ -64,22 +38,17 @@ test("submit screen keeps review and actions grouped side by side on wide screen
 	});
 
 	const lines: string[] = [];
-	renderSubmitScreen(
-		lines,
-		state,
-		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth + 16
-	);
+	renderSubmitScreen(lines, state, plainTheme(), 80);
 
 	assert.deepEqual(lines, [
-		" ▶ 1. Submit      Review answers",
-		"   2. Elaborate  ",
-		"   3. Cancel      Color",
-		"                    → unanswered",
+		"  1 Submit  │  2 Elaborate  │  3 Cancel ",
+		"",
+		" 1. Color",
+		"    unanswered",
 	]);
 });
 
-test("submit screen stacks review above actions on narrow screens", () => {
+test("review action bar falls back to one action per row when too narrow", () => {
 	const state = createInitialState({
 		questions: [
 			{
@@ -90,28 +59,25 @@ test("submit screen stacks review above actions on narrow screens", () => {
 			},
 		],
 	});
-
+	const rows: [number, number][] = [];
 	const lines: string[] = [];
-	renderSubmitScreen(
-		lines,
-		state,
-		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth - 14
+	renderSubmitScreen(lines, state, plainTheme(), 30, undefined, (_, start) =>
+		rows.push([start, start + 1])
 	);
 
-	assert.deepEqual(lines, [
-		" Review answers",
-		"",
-		" Color",
-		"   → unanswered",
-		"",
-		" ▶ 1. Submit",
-		"   2. Elaborate",
-		"   3. Cancel",
+	assert.deepEqual(lines.slice(0, 3), [
+		"  1 Submit ",
+		"  2 Elaborate ",
+		"  3 Cancel ",
+	]);
+	assert.deepEqual(rows, [
+		[0, 1],
+		[1, 2],
+		[2, 3],
 	]);
 });
 
-test("submit screen can show a review shortcut hint below the actions", () => {
+test("submit screen can show a review shortcut hint below the answers", () => {
 	const state = createInitialState({
 		questions: [
 			{
@@ -128,7 +94,7 @@ test("submit screen can show a review shortcut hint below the actions", () => {
 		lines,
 		state,
 		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth - 14,
+		50,
 		"Press 1, 2, or 3 twice to confirm a review action."
 	);
 
@@ -136,7 +102,7 @@ test("submit screen can show a review shortcut hint below the actions", () => {
 		lines.includes(" Press 1, 2, or 3 twice to confirm a review"),
 		true
 	);
-	assert.equal(lines.includes(" action."), true);
+	assert.equal(lines.at(-1), " action.");
 });
 
 test("submit screen shows notes only for answered questions in submit mode", () => {
@@ -166,12 +132,7 @@ test("submit screen shows notes only for answered questions in submit mode", () 
 	state = saveNote(state, "Second note");
 
 	const lines: string[] = [];
-	renderSubmitScreen(
-		lines,
-		state,
-		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth + 76
-	);
+	renderSubmitScreen(lines, state, plainTheme(), 140);
 
 	const firstQuestionIndex = lines.findIndex((line) => line.includes("Single"));
 	const firstQuestionNoteIndex = lines.findIndex((line) =>
@@ -192,8 +153,8 @@ test("submit screen shows notes only for answered questions in submit mode", () 
 	assert.notEqual(secondQuestionIndex, -1);
 	assert(firstQuestionNoteIndex < firstAnswerIndex);
 	assert(optionNoteIndex > firstAnswerIndex);
-	assert(lines[firstQuestionNoteIndex]?.startsWith("     "));
-	assert(lines[optionNoteIndex]?.startsWith("     "));
+	assert(lines[firstQuestionNoteIndex]?.startsWith("    Note:"));
+	assert(lines[optionNoteIndex]?.startsWith("      Note:"));
 	assert.equal(lines[secondQuestionIndex - 1]?.trim(), "");
 	assert(lines.some((line) => line.includes("Note:")));
 	assert(!lines.some((line) => line.includes("Second note")));
@@ -238,12 +199,7 @@ test("submit screen shows all notes when elaborate action is selected", () => {
 	state = { ...state, activeSubmitActionIndex: 1 };
 
 	const lines: string[] = [];
-	renderSubmitScreen(
-		lines,
-		state,
-		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth + 16
-	);
+	renderSubmitScreen(lines, state, plainTheme(), 80);
 
 	assert(lines.some((line) => line.includes("Question note")));
 	assert(lines.some((line) => line.includes("Selected option note")));
@@ -276,12 +232,7 @@ test("submit screen renders multi-select option notes under their related answer
 	state = saveNote(state, "Second note");
 
 	const lines: string[] = [];
-	renderSubmitScreen(
-		lines,
-		state,
-		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth + 76
-	);
+	renderSubmitScreen(lines, state, plainTheme(), 140);
 
 	const firstAnswerIndex = lines.findIndex((line) =>
 		line.includes("→ Follow-up action")
@@ -303,32 +254,6 @@ test("submit screen renders multi-select option notes under their related answer
 	assert(secondAnswerIndex < secondNoteIndex);
 });
 
-test("submit action column keeps all three actions on consecutive rows at the wide breakpoint", () => {
-	const state = createInitialState({
-		questions: [
-			{
-				id: "q1",
-				label: "Color",
-				prompt: "Pick one color.",
-				options: [{ value: "blue", label: "Blue" }],
-			},
-		],
-	});
-
-	const lines: string[] = [];
-	renderSubmitScreen(
-		lines,
-		state,
-		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth
-	);
-
-	assert.equal(lines[0], " ▶ 1. Submit      Review answers");
-	assert.equal(lines[1], "   2. Elaborate  ");
-	assert.equal(lines[2], "   3. Cancel      Color");
-	assert.equal(lines[3], "                    → unanswered");
-});
-
 test("note-only questions stay unanswered while Elaborate shows their notes", () => {
 	let state = createInitialState({
 		questions: [
@@ -346,18 +271,17 @@ test("note-only questions stay unanswered while Elaborate shows their notes", ()
 	const lines: string[] = [];
 	renderSubmitScreen(lines, state, plainTheme(), 80);
 	assert.deepEqual(lines, [
-		"   1. Submit      Review answers",
-		" ▶ 2. Elaborate  ",
-		"   3. Cancel      Name",
-		"                      Note: Need examples",
-		"                    → unanswered",
+		"  1 Submit  │  2 Elaborate  │  3 Cancel ",
+		"",
+		" 1. Name",
+		"    Note: Need examples",
+		"    unanswered",
 	]);
 });
 
-// Colors match upstream v1.2.0 output for the same state: accent title and
-// focused action, success answers, a Note: label before muted note text, and a
-// dim unanswered marker.
-test("review colors answers, notes, and unanswered questions as upstream", () => {
+// Accent labels and focused action, success answers, a Note: label before
+// muted note text, and a warning unanswered marker.
+test("review colors answers, notes, and unanswered questions", () => {
 	let state = createInitialState({
 		questions: [
 			{
@@ -381,32 +305,51 @@ test("review colors answers, notes, and unanswered questions as upstream", () =>
 		fg(color: string, text: string) {
 			return `<${color}>${text}</>`;
 		},
-		bg(_color: string, text: string) {
-			return text;
+		bg(color: string, text: string) {
+			return `{${color}}${text}{/}`;
 		},
 		bold(text: string) {
 			return text;
 		},
 	} as never;
 	const lines: string[] = [];
-	renderSubmitScreen(lines, state, theme, 60);
+	renderSubmitScreen(lines, state, theme, 140);
 	assert.deepEqual(lines, [
-		" <accent>Review answers</>",
+		" {selectedBg}<accent> 1 Submit </>{/}<dim> │ </><muted> 2 Elaborate </><dim> │ </><muted> 3 Cancel </>",
 		"",
-		" <text>UI</>",
-		"     <syntaxString>Note:</> <muted>Prefer the new look</>",
-		"   <success>→ Fix the two bugs</>",
+		" <dim>1.</> <accent>UI</>",
+		"    <syntaxString>Note:</> <muted>Prefer the new look</>",
+		"    <success>→ Fix the two bugs</>",
 		"",
-		" <text>Live pi</>",
-		"   <dim>→ unanswered</>",
-		"",
-		" ▶ <accent>1. Submit</>",
-		"   <text>2. Elaborate</>",
-		"   <text>3. Cancel</>",
+		" <dim>2.</> <accent>Live pi</>",
+		"    <warning>unanswered</>",
 	]);
 });
 
-test("short terminals scroll review answers under a fixed title and keep actions", () => {
+test("review wraps long answers without cutting their last words", () => {
+	let state = createInitialState({
+		questions: [
+			{
+				id: "q1",
+				label: "Editor",
+				prompt: "Type",
+				options: [{ value: "a", label: "A" }],
+			},
+		],
+	});
+	const answer =
+		"A long custom answer that runs well past the right edge so that we can check whether the editor wraps the words properly";
+	state = enterInputMode(state, "q1");
+	state = submitCustomAnswer(state, answer);
+	for (const width of [60, 100]) {
+		const lines: string[] = [];
+		renderSubmitScreen(lines, state, plainTheme(), width);
+		assert(!lines.some((line) => line.includes("...")));
+		assert(lines.join(" ").replace(/\s+/g, " ").includes(answer));
+	}
+});
+
+test("short terminals scroll review answers under a fixed action bar", () => {
 	const questions = Array.from({ length: 12 }, (_, index) => ({
 		id: `q${index + 1}`,
 		label: `Question ${index + 1}`,
@@ -425,23 +368,23 @@ test("short terminals scroll review answers under a fixed title and keep actions
 		lines,
 		state,
 		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth + 16,
+		80,
 		undefined,
 		undefined,
 		reviewWindow,
 		10
 	);
 	assert.deepEqual(lines, [
-		" ▶ 1. Submit      Review answers",
-		"   2. Elaborate  ",
-		"   3. Cancel      Question 1",
-		"                    → unanswered",
-		"                 ",
-		"                  Question 2",
-		"                    → unanswered",
-		"                 ",
-		"                  Question 3",
-		"                  ↓ 9 more below · Shift+↓",
+		"  1 Submit  │  2 Elaborate  │  3 Cancel ",
+		"",
+		" 1. Question 1",
+		"    unanswered",
+		"",
+		" 2. Question 2",
+		"    unanswered",
+		"",
+		" 3. Question 3",
+		" ↓ 9 more below · Shift+↓",
 	]);
 	assert.equal(reviewWindow.reviewPageRows, 7);
 
@@ -451,14 +394,14 @@ test("short terminals scroll review answers under a fixed title and keep actions
 		scrolled,
 		state,
 		plainTheme(),
-		UI_DIMENSIONS.submitWideMinWidth + 16,
+		80,
 		undefined,
 		undefined,
 		reviewWindow,
 		10
 	);
-	assert.equal(scrolled[0], " ▶ 1. Submit      Review answers");
-	assert.equal(scrolled[1], "   2. Elaborate   ↑ 10 more above · Shift+↑");
-	assert.equal(scrolled.at(-3), "                  Question 12");
+	assert.equal(scrolled[0], "  1 Submit  │  2 Elaborate  │  3 Cancel ");
+	assert.equal(scrolled[1], " ↑ 10 more above · Shift+↑");
+	assert.equal(scrolled.at(-3), " 12. Question 12");
 	assert.equal(scrolled.length, 10);
 });

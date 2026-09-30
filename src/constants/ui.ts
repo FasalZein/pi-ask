@@ -10,8 +10,6 @@ export const UI_DIMENSIONS = {
 	previewLeftMinWidth: 22,
 	previewLeftMaxWidth: 34,
 	previewLeftRatio: 0.34,
-	submitWideMinWidth: 64,
-	submitMinReviewWidth: 24,
 } as const;
 
 export const UI_TEXT = {
@@ -20,8 +18,7 @@ export const UI_TEXT = {
 	cursorBlank: "   ",
 	recommendedMarker: "(recommended)",
 	questionNoteTitle: "Note:",
-	reviewTitle: "Review answers",
-	unanswered: "→ unanswered",
+	unanswered: "unanswered",
 	editorPlaceholderInput: "Type answer...",
 	editorPlaceholderNote: "Add a note...",
 } as const;

@@ -135,7 +135,7 @@ test("review body stays within 18 rows while its selected action stays visible",
 		viewport,
 	});
 	assert.equal(lines.length, 18);
-	assert.ok(lines.join("\n").includes(" ▶ 1. Submit"));
+	assert.ok(lines.join("\n").includes(" 1 Submit "));
 	assert.match(lines.join("\n"), BELOW_ANSWERS);
 	assert.ok(lines.at(-2)?.includes("settings"));
 });
@@ -178,7 +178,7 @@ test("review page shows later answers without losing the focused action", () => 
 	});
 	assert.equal(later.length, 18);
 	assert.ok(later.join("\n").includes("Q12"));
-	assert.ok(later.join("\n").includes(" ▶ 1. Submit"));
+	assert.ok(later.join("\n").includes(" 1 Submit "));
 	assert.ok(later.join("\n").includes("more above"));
 });
 
@@ -219,7 +219,7 @@ test("stacked review keeps focused actions visible while its answers scroll", ()
 	});
 	assert.equal(lines.length, 18);
 	assert.ok(lines.some((line) => line.includes(" Q12")));
-	assert.ok(lines.join("\n").includes(" ▶ 1. Submit"));
+	assert.ok(lines.join("\n").includes(" 1 Submit "));
 	assert.ok(lines.join("\n").includes("more above"));
 	assert.ok(lines.at(-2)?.includes("settings"));
 });
@@ -314,7 +314,7 @@ test("flow component pages by visible row height and accepts pi move aliases wit
 	assert.match(page, ABOVE_OPTIONS);
 	assert.ok(page.includes("Ctrl+J"));
 	component.handleInput("k");
-	assert.ok(component.render(80).join("\n").includes("Review answers"));
+	assert.ok(component.render(80).join("\n").includes(" 1 Submit "));
 	component.handleInput("\u0003");
 	component.handleInput("\u0003");
 	const result = await flow;
@@ -451,14 +451,14 @@ test("review page key scrolls answers but leaves Submit visible", async () => {
 		component.handleInput("\t");
 	}
 	let lines = component.render(80);
-	assert.ok(lines.join("\n").includes(" ▶ 1. Submit"));
+	assert.ok(lines.join("\n").includes(" 1 Submit "));
 	for (let index = 0; index < 20; index++) {
 		component.handleInput("\x1b[6~");
 	}
 	lines = component.render(80);
 	assert.equal(lines.length, 18);
 	assert.ok(lines.some((line) => line.includes(" Q12")));
-	assert.ok(lines.join("\n").includes(" ▶ 1. Submit"));
+	assert.ok(lines.join("\n").includes(" 1 Submit "));
 	assert.ok(lines.join("\n").includes("more above"));
 	component.handleInput("\u0003");
 	assert.equal((await flow).cancelled, true);
@@ -565,7 +565,7 @@ test("review with wrapped shortcut hint keeps all actions inside short viewport"
 		reviewShortcutHint: "Press 1, 2, or 3 twice to confirm a review action.",
 	});
 	assert.equal(lines.length, 18);
-	assert(lines.some((line) => line.includes("3. Cancel")));
+	assert(lines.some((line) => line.includes(" 3 Cancel ")));
 	assert(lines.some((line) => line.includes("action.")));
 	assert(lines.at(-1)?.includes("─"));
 });
