@@ -19,6 +19,6 @@ export const UI_TEXT = {
 	recommendedMarker: "(recommended)",
 	questionNoteTitle: "Note:",
 	unanswered: "unanswered",
-	editorPlaceholderInput: "Type answer...",
-	editorPlaceholderNote: "Add a note...",
+	editorPlaceholderInput: "Type your answer",
+	editorPlaceholderNote: "Add a note",
 } as const;
