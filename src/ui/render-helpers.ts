@@ -38,7 +38,11 @@ export function pushWrappedText(
 	prefix = "",
 	continuationPrefix = prefix
 ) {
-	const availableWidth = Math.max(1, width - visibleWidth(prefix));
+	// Wrap for the wider prefix, or continuation lines get cut with "...".
+	const availableWidth = Math.max(
+		1,
+		width - Math.max(visibleWidth(prefix), visibleWidth(continuationPrefix))
+	);
 	const wrapped = wrapText(text, availableWidth);
 	for (let index = 0; index < wrapped.length; index++) {
 		const line = wrapped[index];

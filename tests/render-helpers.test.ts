@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
 import {
+	pushWrappedText,
 	renderBox,
 	renderEditorBlock,
 	renderFooterText,
@@ -122,4 +123,16 @@ test("preview box uses pi's border token on all four edges", () => {
 	assert.ok(
 		calls.some(([color, text]) => color === "text" && text === "Preview")
 	);
+});
+
+test("wrapped text with a wider continuation prefix keeps every word", () => {
+	const plain = { fg: (_: string, text: string) => text } as never;
+	const text =
+		"A long custom answer that runs past the edge so that each visual line wraps";
+	for (const width of [30, 41, 57]) {
+		const lines: string[] = [];
+		pushWrappedText(lines, text, width, plain, "text", "   ", "     ");
+		assert(!lines.some((line) => line.includes("...")));
+		assert.equal(lines.join(" ").replace(/\s+/g, " ").trim(), text);
+	}
 });
