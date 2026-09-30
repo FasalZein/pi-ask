@@ -214,6 +214,7 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 
 ## Supported UX
 
+- a long form title wraps over as many lines as it needs
 - tabbed multi-question flow; the tab bar shows `○`/`●` unanswered/answered markers and a `☰ Review` tab between `←` and `→` arrows, highlights the active tab, and keeps it visible on narrow terminals
 - rules and preview frames use pi border colors; the custom-answer and note editor uses pi editor colors and completion-list styling
 - custom-answer and note editors wrap long text at word boundaries inside their background bar; editor bars and the preview box end one column before the right edge
