@@ -228,17 +228,20 @@ function renderStackedPreviewLayout(
 	leftPane.forEach(add);
 	add("");
 	const linesBeforeBox = leftPane.length + 1;
+	// Start at column 1, like the option rows.
 	const previewBox = renderPreviewPaneContent(
 		selectedOption,
 		theme,
-		width - UI_DIMENSIONS.contentRightMargin,
+		width - 1 - UI_DIMENSIONS.contentRightMargin,
 		previewScrollTop,
 		previewScrollHint,
 		previewMaxRows,
 		onPreviewScrollTop
 	);
-	onPreviewBox?.(previewBox.length, 0, linesBeforeBox);
-	previewBox.forEach(add);
+	onPreviewBox?.(previewBox.length, 1, linesBeforeBox);
+	for (const line of previewBox) {
+		add(` ${line}`);
+	}
 }
 
 function renderPreviewOptionList(

@@ -217,7 +217,7 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 - a long form title wraps over as many lines as it needs
 - tabbed multi-question flow; the tab bar shows `○`/`●` unanswered/answered markers and a `☰ Review` tab between `←` and `→` arrows, highlights the active tab, and keeps it visible on narrow terminals
 - rules and preview frames use pi border colors; the custom-answer and note editor uses pi editor colors and completion-list styling
-- custom-answer and note editors wrap long text at word boundaries inside their background bar; editor bars and the preview box end one column before the right edge
+- custom-answer and note editors wrap long text at word boundaries inside their background bar; editor bars and the preview box end one column before the right edge; the stacked preview box starts in column 1, and box text has one space of padding on each side
 - single-select, multi-select, and preview questions
 - preview boxes appear beside options at wide widths and below them at narrow widths; each uses only the rows its content needs, up to the free terminal rows after pi's status, widgets, and footer plus the ask frame, prompt, options, and other question content. On short terminals, the preview keeps its minimum size and the options may page. Without a known viewport height, the preview retains the 14-row cap. Long previews scroll independently with `[` and `]` by default, show the number of lines above and below, and preserve plain-text spacing without Markdown. Long option descriptions may be shortened to fit the box.
 - recommended options show the warning-colored `(recommended)` subtitle in standard and preview lists, without automatic selection

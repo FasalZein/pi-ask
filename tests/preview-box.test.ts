@@ -100,8 +100,8 @@ test("preview keeps ASCII mockup spacing exactly, including repeated and trailin
 				editor,
 			})
 		);
-		assert(pane.some((line) => line.includes("│  +----+  ")));
-		assert(pane.some((line) => line.includes("│  | a  b |")));
+		assert(pane.some((line) => line.includes("│   +----+   ")));
+		assert(pane.some((line) => line.includes("│   | a  b | ")));
 	}
 });
 
@@ -199,4 +199,16 @@ test("preview box and note editor bar share one right edge before the last colum
 		assert.equal(visibleWidth(bar), width - 1);
 		assert.equal(visibleWidth(top), width - 1);
 	}
+	// Stacked box starts at column 1 with one space of inner padding.
+	const stacked = box(
+		renderAskScreen({
+			config: DEFAULT_ASK_CONFIG,
+			state,
+			theme,
+			width: 80,
+			editor,
+		})
+	);
+	assert(stacked[0]?.startsWith(" ┌"));
+	assert(stacked.some((line) => line.startsWith(" │ line 1 ")));
 });
