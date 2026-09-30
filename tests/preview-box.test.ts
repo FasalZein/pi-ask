@@ -212,3 +212,41 @@ test("preview box and note editor bar share one right edge before the last colum
 	assert(stacked[0]?.startsWith(" ┌"));
 	assert(stacked.some((line) => line.startsWith(" │ line 1 ")));
 });
+
+test("side-by-side preview shows descriptions only in the box heading", () => {
+	const described = createInitialState({
+		questions: [
+			{
+				id: "q",
+				prompt: "Choose",
+				type: "preview",
+				options: [
+					{
+						value: "a",
+						label: "First",
+						description: "Alpha text",
+						preview: "a",
+					},
+					{
+						value: "b",
+						label: "Second",
+						description: "Beta text",
+						preview: "b",
+					},
+				],
+			},
+		],
+	});
+	const lines = renderAskScreen({
+		config: DEFAULT_ASK_CONFIG,
+		state: described,
+		theme,
+		width: 120,
+		editor,
+	});
+	const pane = box(lines);
+	assert(pane.some((line) => line.includes("│ Alpha text")));
+	assert.equal(lines.filter((line) => line.includes("Alpha text")).length, 1);
+	assert(!lines.some((line) => line.includes("Beta text")));
+	assert(lines.some((line) => line.includes("2. Second")));
+});

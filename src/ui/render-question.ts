@@ -195,7 +195,14 @@ function renderWidePreviewLayout(
 		UI_DIMENSIONS.previewMinRightWidth,
 		width - leftWidth - 2 - UI_DIMENSIONS.contentRightMargin
 	);
-	const leftPane = renderPreviewOptionList(rows, theme, leftWidth, onOptionRow);
+	// The box heading shows the focused description, so the list shows labels only.
+	const leftPane = renderPreviewOptionList(
+		rows,
+		theme,
+		leftWidth,
+		onOptionRow,
+		false
+	);
 	const rightPane = renderPreviewPaneContent(
 		selectedOption,
 		theme,
@@ -248,7 +255,8 @@ function renderPreviewOptionList(
 	rows: OptionRowModel[],
 	theme: Theme,
 	width: number,
-	onOptionRow?: QuestionRenderContext["onOptionRow"]
+	onOptionRow?: QuestionRenderContext["onOptionRow"],
+	showDescriptions = true
 ): string[] {
 	const lines: string[] = [];
 	for (const row of rows) {
@@ -262,7 +270,13 @@ function renderPreviewOptionList(
 			row.pointer,
 			" ".repeat(visibleWidth(row.pointer))
 		);
-		renderOptionSubtitle(lines, row.description, row.recommended, width, theme);
+		renderOptionSubtitle(
+			lines,
+			showDescriptions ? row.description : undefined,
+			row.recommended,
+			width,
+			theme
+		);
 		onOptionRow?.(row.index, start, lines.length);
 	}
 	return lines;
