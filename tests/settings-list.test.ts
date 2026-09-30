@@ -69,7 +69,8 @@ test("settings list renders behaviour settings and config path", () => {
 	const list = createList();
 	const text = list.render(72).join("\n");
 
-	assert(text.includes("╭"));
+	assert(text.includes("┌"));
+	assert(!text.includes("╭"));
 	assert(text.includes("@fasalzein/pi-ask"));
 	assert(text.includes("Live settings"));
 	assert(text.includes("Defaults for future asks"));
@@ -253,14 +254,14 @@ test("settings keeps the close hint and focused setting visible on a short termi
 	assert(first.length <= 10);
 	assert(first.join("\n").includes("Auto-submit when answered without notes"));
 	assert(first.join("\n").includes("Esc / Ctrl+C / ? to close"));
-	assert(first.at(-1)?.includes("╰"));
+	assert(first.at(-1)?.includes("└"));
 
 	list.handleInput("\x1b[A"); // Wrap to reset, which is below the initial window.
 	const last = list.render(72);
 	assert(last.length <= 10);
 	assert(last.join("\n").includes("[reset all]"));
 	assert(last.join("\n").includes("Esc / Ctrl+C / ? to close"));
-	assert(last.at(-1)?.includes("╰"));
+	assert(last.at(-1)?.includes("└"));
 });
 
 test("settings stays inside a narrow, short viewport", () => {

@@ -214,11 +214,12 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 
 ## Supported UX
 
+- a long form title wraps over as many lines as it needs
 - tabbed multi-question flow; the tab bar shows `○`/`●` unanswered/answered markers and a `☰ Review` tab between `←` and `→` arrows, highlights the active tab, and keeps it visible on narrow terminals
-- rules and preview frames use pi border colors; the custom-answer and note editor uses pi editor colors and completion-list styling
-- custom-answer and note editors wrap long text at word boundaries inside their background bar; editor bars and the preview box end one column before the right edge
+- rules, preview frames, and the settings overlay frame use pi border colors and square corners; the custom-answer and note editor uses pi editor colors and completion-list styling
+- custom-answer and note editors wrap long text at word boundaries inside their background bar; editor bars and the preview box end one column before the right edge; the stacked preview box starts in column 1, and box text has one space of padding on each side
 - single-select, multi-select, and preview questions
-- preview boxes appear beside options at wide widths and below them at narrow widths; each uses only the rows its content needs, up to the free terminal rows after pi's status, widgets, and footer plus the ask frame, prompt, options, and other question content. On short terminals, the preview keeps its minimum size and the options may page. Without a known viewport height, the preview retains the 14-row cap. Long previews scroll independently with `[` and `]` by default, show the number of lines above and below, and preserve plain-text spacing without Markdown. Long option descriptions may be shortened to fit the box.
+- preview boxes appear beside options at wide widths and below them at narrow widths; each uses only the rows its content needs, up to the free terminal rows after pi's status, widgets, and footer plus the ask frame, prompt, options, and other question content. On short terminals, the preview keeps its minimum size and the options may page. Without a known viewport height, the preview retains the 14-row cap. Long previews scroll independently with `[` and `]` by default, show the number of lines above and below, and preserve plain-text spacing without Markdown. Beside the options, the list shows labels and the `(recommended)` marker only; the box heading shows the focused option's description. Long option descriptions may be shortened to fit the box.
 - recommended options show the warning-colored `(recommended)` subtitle in standard and preview lists, without automatic selection
 - active question type changes via configurable `main.changeQuestionType` hotkey, default `t`; non-preview questions toggle `single <-> multi`; preview questions toggle `preview <-> multi`
 - inline free-form answers for all question types
@@ -229,7 +230,7 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 - question notes via `Shift+N`
 - option notes via `n`
 - number-key quick selection
-- review tab shows the Submit, Elaborate, and Cancel actions on the left and `Review answers` on the right; each question shows its label, question note, `→ answer` lines in the success color with option notes under their answers, or `→ unanswered`; narrow terminals stack the review above the actions; on short terminals the answers scroll under a fixed title and show how many questions are above and below
+- review tab shows a one-row action bar (`1 Submit │ 2 Elaborate │ 3 Cancel`, the focused action highlighted) above numbered question blocks; up/down move between actions, and the footer shows `↑↓ action`; each block shows its question label, question note, `→ answer` lines in the success color with option notes under their answers, or `unanswered` in the warning color; terminals too narrow for the bar show one action per row; on short terminals the answers scroll under the fixed bar and show how many questions are above and below
 - on the review tab, `Submit` and `Cancel` preview notes only for answered questions
 - on the review tab, `Elaborate` preview expands to all question notes and all option notes, including notes on unselected options
 - transcript-friendly call and result rendering
@@ -259,7 +260,8 @@ Main flow:
 - `main.confirm`, `main.cancel`, and `main.toggle` confirm, cancel, or toggle; defaults: `Enter`, `Esc`, `Space`
 - `main.changeQuestionType` changes the active question type (non-preview: `single <-> multi`; preview: `preview <-> multi`); default: `t`; destructive `multi -> single` changes require pressing the type hotkey again, with no timeout, and the pending confirmation clears on other navigation/actions
 - `main.optionNote` and `main.questionNote` open option/question notes; defaults: `n`, `Shift+N`
-- question options, review actions, and settings rows use the same ` ▶ ` focus pointer; multi-select options use `[ ]` and `[✓]`, and the question shows `Pick any · N of M selected` for predefined options (plus a selected custom answer, if any), followed by one blank line; saved option notes start in the same column as the option description
+- an open or saved question note sits one blank row below the prompt
+- question options and settings rows use the same ` ▶ ` focus pointer; multi-select options use `[ ]` and `[✓]`, and the question shows `Pick any · N of M selected` for predefined options (plus a selected custom answer, if any), followed by one blank line; saved option notes start in the same column as the option description
 - question footers show the configured up/down and next-tab navigation, plus fixed `1-9` shortcuts; editor footers do not advertise tab navigation
 - footers stay on one line: when the full hint list does not fit, hints are dropped in this order: up/down move, number keys (pick/toggle), type change, tab/back navigation; confirm, note, cancel/dismiss, and settings hints always stay and wrap only when even they do not fit
 - on a short terminal, the header, tabs, question prompt, multi-selection count, and footer stay fixed while option rows and review answers window to the available rows; focused options and review actions stay visible, and indicators count hidden options or review questions when space permits

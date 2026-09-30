@@ -25,7 +25,9 @@ export function renderFrameHeader(args: {
 
 	add(theme.fg("border", "─".repeat(Math.max(1, width))));
 	if (state.title) {
-		add(` ${theme.fg("accent", theme.bold(state.title))}`);
+		for (const line of wrapText(state.title, Math.max(1, width - 1))) {
+			add(` ${theme.fg("accent", theme.bold(line))}`);
+		}
 		add();
 	}
 	add(renderTabs(state, theme, width));

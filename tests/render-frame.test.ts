@@ -579,3 +579,23 @@ test("preview without viewport retains the 14-row fallback", () => {
 	assert.equal(lines.filter((line) => line.includes("│")).length, 12);
 	assert(lines.some((line) => line.includes("above · ↓")));
 });
+
+test("long form titles wrap instead of ending in an ellipsis", () => {
+	const title =
+		"Stress test: an intentionally long form title that should wrap without cutting off any words";
+	const state = createInitialState({
+		title,
+		questions: [
+			{ id: "q1", prompt: "Pick", options: [{ value: "a", label: "A" }] },
+		],
+	});
+	const lines = renderAskScreen({
+		config: DEFAULT_ASK_CONFIG,
+		state,
+		theme: plainTheme(),
+		width: 40,
+		editor: mockEditor(),
+	});
+	assert(!lines.some((line) => line.includes("...")));
+	assert.equal(lines.slice(1, 4).join(" ").replace(/\s+/g, " ").trim(), title);
+});

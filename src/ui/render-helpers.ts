@@ -38,7 +38,11 @@ export function pushWrappedText(
 	prefix = "",
 	continuationPrefix = prefix
 ) {
-	const availableWidth = Math.max(1, width - visibleWidth(prefix));
+	// Wrap for the wider prefix, or continuation lines get cut with "...".
+	const availableWidth = Math.max(
+		1,
+		width - Math.max(visibleWidth(prefix), visibleWidth(continuationPrefix))
+	);
 	const wrapped = wrapText(text, availableWidth);
 	for (let index = 0; index < wrapped.length; index++) {
 		const line = wrapped[index];
@@ -243,6 +247,16 @@ function renderPersistentBackground(
 	return `${prefix} ${reopenedText} ${suffix}`;
 }
 
+/** Text columns inside a box of `width`, after borders and inner padding. */
+function boxTextWidth(width: number): number {
+	return Math.max(
+		4,
+		Math.max(UI_DIMENSIONS.boxMinWidth, width) -
+			2 -
+			2 * UI_DIMENSIONS.boxPadding
+	);
+}
+
 export function renderBox(
 	content: Array<{
 		text: string;
@@ -252,19 +266,20 @@ export function renderBox(
 	width: number,
 	theme: Theme
 ): string[] {
-	const boxWidth = Math.max(UI_DIMENSIONS.boxMinWidth, width);
-	const innerWidth = Math.max(4, boxWidth - 2);
-	const top = theme.fg("border", `┌${"─".repeat(innerWidth)}┐`);
-	const bottom = theme.fg("border", `└${"─".repeat(innerWidth)}┘`);
+	const textWidth = boxTextWidth(width);
+	const ruleWidth = textWidth + 2 * UI_DIMENSIONS.boxPadding;
+	const inset = " ".repeat(UI_DIMENSIONS.boxPadding);
+	const top = theme.fg("border", `┌${"─".repeat(ruleWidth)}┐`);
+	const bottom = theme.fg("border", `└${"─".repeat(ruleWidth)}┘`);
 	const lines = [top];
 	for (const item of content) {
 		for (const rawLine of item.preserveSpacing
-			? wrapPreviewLine(item.text, innerWidth)
-			: wrapText(item.text, innerWidth)) {
+			? wrapPreviewLine(item.text, textWidth)
+			: wrapText(item.text, textWidth)) {
 			const line = theme.fg(item.color, rawLine);
-			const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(line)));
+			const padding = " ".repeat(Math.max(0, textWidth - visibleWidth(line)));
 			lines.push(
-				theme.fg("border", "│") + line + padding + theme.fg("border", "│")
+				`${theme.fg("border", "│")}${inset}${line}${padding}${inset}${theme.fg("border", "│")}`
 			);
 		}
 	}
@@ -304,10 +319,7 @@ export function renderPreviewPaneContent(
 		return renderBox([{ text: NO_PREVIEW_TEXT, color: "dim" }], width, theme);
 	}
 
-	const innerWidth = Math.max(
-		4,
-		Math.max(UI_DIMENSIONS.boxMinWidth, width) - 2
-	);
+	const innerWidth = boxTextWidth(width);
 	const indicator = (top: number, pageSize: number, total: number) =>
 		`↑ ${top} above · ↓ ${total - top - pageSize} more · ${scrollHint} scroll`;
 	const previewLines = (selectedOption.preview ?? NO_PREVIEW_TEXT)
@@ -420,7 +432,6 @@ export function mergeColumns(
 
 export function measurePreviewLeftWidth(
 	options: Array<{
-		description?: string;
 		label: string;
 		recommended?: boolean;
 	}>,
@@ -429,13 +440,10 @@ export function measurePreviewLeftWidth(
 	let widest = 0;
 	for (let index = 0; index < options.length; index++) {
 		const option = options[index];
-		const description = option.recommended
-			? `${UI_TEXT.recommendedMarker}${option.description ? ` | ${option.description}` : ""}`
-			: option.description;
 		widest = Math.max(
 			widest,
 			visibleWidth(`${index + 1}. ${option.label}`),
-			description ? visibleWidth(description) : 0
+			option.recommended ? visibleWidth(UI_TEXT.recommendedMarker) : 0
 		);
 	}
 

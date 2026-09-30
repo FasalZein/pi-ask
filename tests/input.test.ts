@@ -331,6 +331,10 @@ test("custom editor submit key controls actual editor submission", async () => {
 	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
 });
 
+function focusTheme() {
+	return { ...plainTheme(), bg: (_color: string, text: string) => `[${text}]` };
+}
+
 function plainTheme() {
 	return {
 		bg(_color: string, text: string) {
@@ -472,7 +476,7 @@ test("review arrows move only between actions and number shortcuts keep action s
 									// The test calls render directly.
 								},
 							},
-							plainTheme(),
+							focusTheme(),
 							{},
 							resolve
 						) as typeof component;
@@ -504,12 +508,13 @@ test("review arrows move only between actions and number shortcuts keep action s
 		component.handleInput("\t");
 		component.handleInput("\t");
 		component.handleInput("\x1b[A");
-		assert(component.render(80).join("\n").includes(" ▶ 1. Submit"));
+		assert(component.render(80).join("\n").includes("[ 1 Submit ]"));
 		component.handleInput("\x1b[B");
 		const review = component.render(80).join("\n");
-		assert(review.includes(" ▶ 2. Elaborate"));
-		// Only the focused action carries the pointer; question rows are not focusable here.
-		assert.equal(review.split("▶").length - 1, 1);
+		assert(review.includes("[ 2 Elaborate ]"));
+		// Only the focused action is highlighted; question rows are not focusable here.
+		assert(!review.includes("[ 1 Submit ]"));
+		assert(!review.includes("▶"));
 		component.handleInput("2");
 		assert(
 			component.render(80).join("\n").includes("Press 2 again to Elaborate")

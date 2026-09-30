@@ -53,7 +53,7 @@ test("question view model marks active custom option as inline editor", () => {
 	const model = buildQuestionScreenModel(buildContext(state));
 	assert.equal(model.mode, "standard");
 	assert.equal(model.rows[1]?.detail?.kind, "editor");
-	assert.equal(model.rows[1]?.detail?.placeholder, "Type answer...");
+	assert.equal(model.rows[1]?.detail?.placeholder, "Type your answer");
 });
 
 test("question view model marks multi custom answer as checked", () => {

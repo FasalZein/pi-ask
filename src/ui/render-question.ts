@@ -65,8 +65,8 @@ function renderQuestionNote(
 	questionNote: ReturnType<typeof buildQuestionScreenModel>["questionNote"],
 	context: QuestionRenderContext
 ) {
+	lines.push("");
 	if (!questionNote) {
-		lines.push("");
 		return;
 	}
 	if (questionNote.kind === "editor") {
@@ -195,7 +195,14 @@ function renderWidePreviewLayout(
 		UI_DIMENSIONS.previewMinRightWidth,
 		width - leftWidth - 2 - UI_DIMENSIONS.contentRightMargin
 	);
-	const leftPane = renderPreviewOptionList(rows, theme, leftWidth, onOptionRow);
+	// The box heading shows the focused description, so the list shows labels only.
+	const leftPane = renderPreviewOptionList(
+		rows,
+		theme,
+		leftWidth,
+		onOptionRow,
+		false
+	);
 	const rightPane = renderPreviewPaneContent(
 		selectedOption,
 		theme,
@@ -228,24 +235,28 @@ function renderStackedPreviewLayout(
 	leftPane.forEach(add);
 	add("");
 	const linesBeforeBox = leftPane.length + 1;
+	// Start at column 1, like the option rows.
 	const previewBox = renderPreviewPaneContent(
 		selectedOption,
 		theme,
-		width - UI_DIMENSIONS.contentRightMargin,
+		width - 1 - UI_DIMENSIONS.contentRightMargin,
 		previewScrollTop,
 		previewScrollHint,
 		previewMaxRows,
 		onPreviewScrollTop
 	);
-	onPreviewBox?.(previewBox.length, 0, linesBeforeBox);
-	previewBox.forEach(add);
+	onPreviewBox?.(previewBox.length, 1, linesBeforeBox);
+	for (const line of previewBox) {
+		add(` ${line}`);
+	}
 }
 
 function renderPreviewOptionList(
 	rows: OptionRowModel[],
 	theme: Theme,
 	width: number,
-	onOptionRow?: QuestionRenderContext["onOptionRow"]
+	onOptionRow?: QuestionRenderContext["onOptionRow"],
+	showDescriptions = true
 ): string[] {
 	const lines: string[] = [];
 	for (const row of rows) {
@@ -259,7 +270,13 @@ function renderPreviewOptionList(
 			row.pointer,
 			" ".repeat(visibleWidth(row.pointer))
 		);
-		renderOptionSubtitle(lines, row.description, row.recommended, width, theme);
+		renderOptionSubtitle(
+			lines,
+			showDescriptions ? row.description : undefined,
+			row.recommended,
+			width,
+			theme
+		);
 		onOptionRow?.(row.index, start, lines.length);
 	}
 	return lines;

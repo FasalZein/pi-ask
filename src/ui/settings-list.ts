@@ -519,16 +519,16 @@ export class AskSettingsList {
 	}
 
 	private topBorder(innerWidth: number): string {
-		return this.theme.fg("muted", `╭${"─".repeat(innerWidth)}╮`);
+		return this.theme.fg("border", `┌${"─".repeat(innerWidth)}┐`);
 	}
 
 	private bottomBorder(innerWidth: number): string {
-		return this.theme.fg("muted", `╰${"─".repeat(innerWidth)}╯`);
+		return this.theme.fg("border", `└${"─".repeat(innerWidth)}┘`);
 	}
 
 	private line(content: string, innerWidth: number): string {
 		const clipped = truncateToWidth(content, innerWidth, "…");
-		return `${this.theme.fg("muted", "│")}${padToWidth(clipped, innerWidth)}${this.theme.fg("muted", "│")}`;
+		return `${this.theme.fg("border", "│")}${padToWidth(clipped, innerWidth)}${this.theme.fg("border", "│")}`;
 	}
 
 	private close(): void {

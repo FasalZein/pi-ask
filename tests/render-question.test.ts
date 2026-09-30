@@ -144,10 +144,10 @@ test("selected custom option keeps its label and renders editor below", () => {
 	});
 
 	assert(lines.some((line) => line.includes("Type your own")));
-	assert(lines.some((line) => line.includes("Type answer...")));
+	assert(lines.some((line) => line.includes("Type your answer")));
 });
 
-test("open question note renders inline label and editor", () => {
+test("open question note renders one blank row below the prompt", () => {
 	const state = enterQuestionNoteMode(
 		createInitialState({
 			questions: [
@@ -175,10 +175,11 @@ test("open question note renders inline label and editor", () => {
 	const promptIndex = lines.findIndex((line) =>
 		line.includes("Pick any extra things to include.")
 	);
-	const inputIndex = lines.findIndex((line) => line.includes("Add a note..."));
+	const inputIndex = lines.findIndex((line) => line.includes("Add a note"));
 
 	assert.notEqual(promptIndex, -1);
-	assert.equal(inputIndex, promptIndex + 1);
+	assert.equal(inputIndex, promptIndex + 2);
+	assert.equal(lines[promptIndex + 1], "");
 	assert(!lines.some((line) => line.includes("Note:")));
 });
 
@@ -209,7 +210,7 @@ test("open option note renders flush below the option", () => {
 	});
 
 	const optionIndex = lines.findIndex((line) => line.includes("Option A"));
-	const inputIndex = lines.findIndex((line) => line.includes("Add a note..."));
+	const inputIndex = lines.findIndex((line) => line.includes("Add a note"));
 
 	assert.notEqual(optionIndex, -1);
 	assert.equal(inputIndex, optionIndex + 1);
@@ -279,7 +280,10 @@ test("freeform-only question renders label without numbering or pointer and sepa
 	const labelIndex = lines.findIndex((line) =>
 		line.includes("Type your answer:")
 	);
-	const inputIndex = lines.findIndex((line) => line.includes("Type answer..."));
+	const inputIndex = lines.findIndex(
+		(line) =>
+			line.includes("Type your answer") && !line.includes("Type your answer:")
+	);
 
 	assert.notEqual(labelIndex, -1);
 	assert.equal(inputIndex, labelIndex + 2);
@@ -359,9 +363,11 @@ test("preview custom option reuses the normal inline editor", () => {
 	});
 
 	assert(lines.some((line) => line.includes("Type your own")));
-	assert(lines.some((line) => line.includes("Type answer...")));
+	assert(lines.some((line) => line.includes("Type your answer")));
 	const optionIndex = lines.findIndex((line) => line.includes("Type your own"));
-	const inputIndex = lines.findIndex((line) => line.includes("Type answer..."));
+	const inputIndex = lines.findIndex((line) =>
+		line.includes("Type your answer")
+	);
 	assert.equal(inputIndex, optionIndex + 1);
 	assert(!lines.some((line) => line.includes("Preview A")));
 });
@@ -527,3 +533,20 @@ for (const [name, makeState] of Object.entries(openEditorStates)) {
 		});
 	}
 }
+
+test("saved question note sits one blank row below the prompt", () => {
+	let state = createInitialState({
+		questions: [
+			{ id: "q1", prompt: "Pick one", options: [{ value: "a", label: "A" }] },
+		],
+	});
+	state = enterQuestionNoteMode(state, "q1");
+	state = saveNote(state, "Keep it short");
+	const lines = plainQuestionLines(state, 80);
+	assert.deepEqual(lines.slice(0, 4), [
+		" Pick one",
+		"",
+		" Note: Keep it short",
+		"",
+	]);
+});
