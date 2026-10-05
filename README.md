@@ -13,6 +13,12 @@ pi-ask needs pi 0.99.0 or later. The project checks run against pi 1.0.2 and aga
 pi install git:github.com/FasalZein/pi-ask
 ```
 
+To pin a release, add its tag. `pi update` does not move a pinned tag.
+
+```bash
+pi install git:github.com/FasalZein/pi-ask@v1.1.0
+```
+
 To try it for one run without an install:
 
 ```bash
