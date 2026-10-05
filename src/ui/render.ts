@@ -15,13 +15,6 @@ import type { QuestionRenderContext, Theme } from "./render-types.ts";
 // Only arrow keys become glyphs; "pageUp" keeps its name.
 const UP_SUFFIX = /(?<=^|\+)Up$/;
 const DOWN_SUFFIX = /(?<=^|\+)Down$/;
-// pi's fullscreen transcript consumes these keys before the ask form sees them.
-const FULLSCREEN_TRANSCRIPT_KEYS = new Set([
-	"pageup",
-	"pagedown",
-	"home",
-	"end",
-]);
 
 export interface AskViewport {
 	bodyRows: number;
@@ -49,12 +42,15 @@ export function renderAskScreen(args: {
 	viewport?: AskViewport;
 	previewScrollTop?: number;
 	onPreviewScrollTop?: (top: number) => void;
-	/** True when pi runs its fullscreen TUI, which owns PageUp/PageDown/Home/End. */
-	fullscreen?: boolean;
+	/**
+	 * Lower-case keys that pi's fullscreen transcript consumes before the form.
+	 * Undefined outside fullscreen.
+	 */
+	transcriptKeys?: ReadonlySet<string>;
 }): string[] {
 	const { config, footerNotice, reviewShortcutHint, state, theme, width } =
 		args;
-	const pageKeys = pagingLabels(config, args.fullscreen ?? false);
+	const pageKeys = pagingLabels(config, args.transcriptKeys);
 	const header: string[] = [];
 	const body: string[] = [];
 	const footer = renderAskFooter(config, footerNotice, state, theme, width);
@@ -330,18 +326,22 @@ function pageKeyLabel(key: string): string {
 		.replace(DOWN_SUFFIX, "↓");
 }
 
-function pagingLabel(keys: readonly string[], fullscreen: boolean): string {
-	const key = fullscreen
-		? keys.find(
-				(candidate) => !FULLSCREEN_TRANSCRIPT_KEYS.has(candidate.toLowerCase())
-			)
+function pagingLabel(
+	keys: readonly string[],
+	transcriptKeys: ReadonlySet<string> | undefined
+): string {
+	const key = transcriptKeys
+		? keys.find((candidate) => !transcriptKeys.has(candidate.toLowerCase()))
 		: keys[0];
 	return key ? pageKeyLabel(key) : "";
 }
 
-function pagingLabels(config: AskConfig, fullscreen: boolean) {
+function pagingLabels(
+	config: AskConfig,
+	transcriptKeys: ReadonlySet<string> | undefined
+) {
 	return {
-		up: pagingLabel(config.keymaps.main.pageUp, fullscreen),
-		down: pagingLabel(config.keymaps.main.pageDown, fullscreen),
+		up: pagingLabel(config.keymaps.main.pageUp, transcriptKeys),
+		down: pagingLabel(config.keymaps.main.pageDown, transcriptKeys),
 	};
 }

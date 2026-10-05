@@ -282,6 +282,36 @@ function createAskViewport(rows: number): AskViewport {
 	};
 }
 
+// pi-tui's fullscreen viewport consumes these actions before a non-overlay
+// component sees the key (TuiAltScreen.handleViewportInput). Search
+// navigation keys apply only while search is open, so they are not listed.
+const FULLSCREEN_TRANSCRIPT_ACTIONS = [
+	"tui.altScreen.search",
+	"tui.altScreen.pageUp",
+	"tui.altScreen.pageDown",
+	"tui.altScreen.halfPageUp",
+	"tui.altScreen.halfPageDown",
+	"tui.altScreen.lineUp",
+	"tui.altScreen.lineDown",
+	"tui.altScreen.previousPrompt",
+	"tui.altScreen.nextPrompt",
+	"tui.altScreen.top",
+	"tui.altScreen.bottom",
+] as const;
+
+function getTranscriptKeys(
+	controller: AskFlowController
+): ReadonlySet<string> | undefined {
+	if (controller.tui.mode !== "fullscreen") {
+		return;
+	}
+	return new Set(
+		FULLSCREEN_TRANSCRIPT_ACTIONS.flatMap((action) =>
+			controller.keybindings.getKeys(action)
+		).map((key) => key.toLowerCase())
+	);
+}
+
 function renderController(
 	controller: AskFlowController,
 	width: number
@@ -295,7 +325,7 @@ function renderController(
 		},
 		config: controller.config,
 		editor: controller.editor,
-		fullscreen: controller.tui.mode === "fullscreen",
+		transcriptKeys: getTranscriptKeys(controller),
 		footerNotice: getFooterNotice(controller),
 		reviewShortcutHint: getActiveReviewShortcutHint(controller),
 		state: controller.state,
