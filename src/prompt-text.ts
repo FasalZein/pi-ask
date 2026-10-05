@@ -7,7 +7,7 @@ export const ASK_TOOL_PROMPT_SNIPPET =
 	"Clarify ambiguous or preference-sensitive decisions with a short interactive interview before proceeding";
 
 export const ASK_TOOL_DESCRIPTION =
-	"Interactive clarification tool for cases where the next step depends on user preferences, missing requirements, or choosing between multiple valid directions. Ask a short structured interview, collect normalized answers, and continue using those answers explicitly instead of guessing.";
+	"Interactive clarification tool for cases where the next step depends on user preferences, missing requirements, or choosing between multiple valid directions. Ask only for the decisions needed now, collect normalized answers, and continue using those answers explicitly instead of guessing. When the user requests a specific decision, ask that question only; do not add other requirements or confirmation questions.";
 export const ASK_TOOL_PROMPT_GUIDELINES = [
 	"Use `ask_user` before preference-sensitive decisions (scope, tone, UX, naming, architecture, docs, implementation direction), or when several valid directions exist; ask 1-3 concise questions instead of choosing one path yourself.",
 	"If a choice is still needed after an answer or note, use another structured `ask_user` call, not plain-text choices in chat. When prior answers narrow the branch, bundle the next 2-3 related unresolved decisions into one follow-up when possible; ask one at a time only when the next question materially depends on the previous answer.",

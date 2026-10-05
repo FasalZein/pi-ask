@@ -6,7 +6,7 @@ This document defines the stable external behavior. It does not explain internal
 
 ## Model-facing tool text
 
-The extension uses one concise tool description and two guidelines. The question schema has no question limit and omits option `value`. It derives unique machine values from labels while accepting valid explicit values from older calls. General follow-up rules live in guideline 2. Elaborate results add an answer-first instruction to model-facing content without changing transcript rendering. Configuration guidance is conditional; the system prompt is never replaced.
+The extension uses one concise tool description and two guidelines. The question schema has no question limit and omits option `value`. It derives unique machine values from labels while accepting valid explicit values from older calls. The description limits asks to decisions needed now. For a specific requested decision, ask that question only, without other requirements or confirmation questions. This does not limit explicitly requested multi-question rounds. General follow-up rules live in guideline 2. Elaborate results add an answer-first instruction to model-facing content without changing transcript rendering. Configuration guidance is conditional; the system prompt is never replaced.
 
 ## Input
 
