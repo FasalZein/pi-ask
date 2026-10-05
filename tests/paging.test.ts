@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
+import type { AskConfig } from "../src/config/schema.ts";
 import { createInitialState } from "../src/state/create.ts";
 import { moveOption, moveTab } from "../src/state/transitions.ts";
 import { getInputCommand } from "../src/ui/input.ts";
@@ -17,6 +18,8 @@ const ABOVE_OPTIONS = /↑ \d+ more options above/;
 const BELOW_ANSWERS = /↓ \d+ more below/;
 const COMPACT_ABOVE = /↑ \d+ more/;
 const COMPACT_BELOW = /↓ \d+ more/;
+const SIX_ABOVE_WITHOUT_KEY = /↑ 6 more options above\n/;
+const ONE_ABOVE_SINGULAR = /↑ 1 more option above · Shift\+↑/;
 const params = {
 	title: "Demo",
 	questions: [
@@ -733,4 +736,171 @@ test("ask render reserves pi dock rows for footer, status, and widgets", async (
 	component.handleInput("\u0003");
 	await flow;
 	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+});
+
+// pi 1.0.2 default fullscreen transcript keys (keybindings.md, Fullscreen).
+const DEFAULT_TRANSCRIPT_KEYS = new Set([
+	"pageup",
+	"pagedown",
+	"home",
+	"end",
+	"ctrl+shift+up",
+	"ctrl+shift+down",
+	"ctrl+shift+f",
+]);
+
+test("fullscreen page hints skip keys that pi's transcript consumes", () => {
+	let state = createInitialState(params);
+	for (let index = 0; index < 11; index++) {
+		state = moveOption(state, 1);
+	}
+	const withPaging = (pageUp: string[], pageDown: string[]) => ({
+		...DEFAULT_ASK_CONFIG,
+		keymaps: {
+			...DEFAULT_ASK_CONFIG.keymaps,
+			main: { ...DEFAULT_ASK_CONFIG.keymaps.main, pageUp, pageDown },
+		},
+	});
+	const render = (
+		config: AskConfig,
+		transcriptKeys: ReadonlySet<string> | undefined
+	) =>
+		renderAskScreen({
+			config,
+			state,
+			theme,
+			width: 80,
+			editor,
+			transcriptKeys,
+			viewport: {
+				rows: 18,
+				scrollTop: 0,
+				reviewScrollTop: 0,
+				reviewPageRows: 0,
+				optionStarts: [] as number[],
+				bodyRows: 0,
+			},
+		}).join("\n");
+	const pageFirst = withPaging(
+		["pageUp", "shift+up"],
+		["pageDown", "shift+down"]
+	);
+
+	const regular = render(pageFirst, undefined);
+	assert.ok(regular.includes("more options above · pageUp"));
+	assert.ok(regular.includes("more options below · pageDown"));
+
+	const fullscreen = render(pageFirst, DEFAULT_TRANSCRIPT_KEYS);
+	assert.ok(fullscreen.includes("more options above · Shift+↑"));
+	assert.ok(fullscreen.includes("more options below · Shift+↓"));
+	assert.ok(!fullscreen.includes("pageUp"));
+
+	// Ctrl+Shift+Up/Down jump between prompts in pi's fullscreen transcript.
+	const promptJump = render(
+		withPaging(
+			["ctrl+shift+up", "shift+up"],
+			["ctrl+shift+down", "shift+down"]
+		),
+		DEFAULT_TRANSCRIPT_KEYS
+	);
+	assert.ok(promptJump.includes("more options above · Shift+↑"));
+	assert.ok(!promptJump.includes("Ctrl+Shift"));
+
+	// A user who disables pi's transcript paging gets PageUp/PageDown back.
+	const pagingDisabled = render(
+		pageFirst,
+		new Set(["home", "end", "ctrl+shift+up", "ctrl+shift+down"])
+	);
+	assert.ok(pagingDisabled.includes("more options above · pageUp"));
+
+	const onlyConsumed = render(
+		withPaging(["pageUp"], ["end"]),
+		DEFAULT_TRANSCRIPT_KEYS
+	);
+	assert.match(onlyConsumed, SIX_ABOVE_WITHOUT_KEY);
+	assert.ok(!onlyConsumed.includes("pageUp"));
+	assert.ok(!onlyConsumed.includes(" · End"));
+});
+
+test("fullscreen flow reads transcript keys from pi's effective keybindings", async () => {
+	const { runAskFlow } = await import("../src/ui/controller.ts");
+	const { getAskConfigStore } = await import("../src/config/store.ts");
+	getAskConfigStore().setConfig({
+		...DEFAULT_ASK_CONFIG,
+		keymaps: {
+			...DEFAULT_ASK_CONFIG.keymaps,
+			main: {
+				...DEFAULT_ASK_CONFIG.keymaps.main,
+				pageDown: ["shift+down", "ctrl+j"],
+			},
+		},
+	});
+	// The user remapped pi's transcript paging to Shift+Up/Down.
+	const remapped: Record<string, string[]> = {
+		"tui.altScreen.pageUp": ["shift+up"],
+		"tui.altScreen.pageDown": ["shift+down"],
+	};
+	let component: { render(width: number): string[] } | undefined;
+	let finish: ((value: unknown) => void) | undefined;
+	const flow = runAskFlow(
+		{
+			cwd: process.cwd(),
+			mode: "tui",
+			ui: {
+				custom(factory: (...args: unknown[]) => unknown) {
+					return new Promise((resolve) => {
+						finish = resolve;
+						component = factory(
+							{
+								mode: "fullscreen",
+								terminal: { rows: 18, columns: 80 },
+								requestRender() {
+									// The fake does not schedule terminal paints.
+								},
+							},
+							theme,
+							{
+								matches: () => false,
+								getKeys: (action: string) => remapped[action] ?? [],
+							},
+							resolve
+						) as typeof component;
+					});
+				},
+			},
+		} as never,
+		params,
+		{ exec: async () => ({ stdout: "", stderr: "", code: 0, killed: false }) }
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.ok(component);
+	const screen = component.render(80).join("\n");
+	assert.ok(screen.includes("more options below · Ctrl+J"));
+	assert.ok(!screen.includes("Shift+↓"));
+	finish?.({ cancelled: true });
+	await flow;
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+});
+
+test("page indicators use the singular noun for one hidden option", () => {
+	let state = createInitialState(params);
+	state = moveOption(state, 1);
+	state = moveOption(state, 1);
+	const lines = renderAskScreen({
+		config: DEFAULT_ASK_CONFIG,
+		state,
+		theme,
+		width: 80,
+		editor,
+		viewport: {
+			rows: 14,
+			scrollTop: 0,
+			reviewScrollTop: 0,
+			reviewPageRows: 0,
+			optionStarts: [] as number[],
+			bodyRows: 0,
+		},
+	}).join("\n");
+	assert.match(lines, ONE_ABOVE_SINGULAR);
+	assert.ok(!lines.includes("1 more options"));
 });

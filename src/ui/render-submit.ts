@@ -142,12 +142,12 @@ function renderReviewAnswers(
 		answers: { start, end: start + rows, maxTop },
 		lines: [
 			...indicator(
-				above ? ` ↑ ${above} more above · ${pageKeys.up}` : "",
+				above ? ` ↑ ${above} more above${keyHint(pageKeys.up)}` : "",
 				`↑ ${above} more`
 			),
 			...answers.slice(top, top + rows),
 			...indicator(
-				below ? ` ↓ ${below} more below · ${pageKeys.down}` : "",
+				below ? ` ↓ ${below} more below${keyHint(pageKeys.down)}` : "",
 				`↓ ${below} more`
 			),
 		],
@@ -265,4 +265,8 @@ function renderReviewShortcutHint(
 		pushWrappedText(lines, hint, width, theme, "dim", " ", " ");
 	}
 	return lines;
+}
+
+function keyHint(label: string): string {
+	return label ? ` · ${label}` : "";
 }

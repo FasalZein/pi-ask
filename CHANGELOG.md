@@ -1,5 +1,21 @@
 # Changelog
 
+# 1.1.0 (2026-10-05)
+
+pi-ask now needs pi 0.99.0 or later (ADR 0010). On older pi, pin `pi install git:github.com/FasalZein/pi-ask@v1.0.1`.
+
+### Features
+
+* `ask_user` registers with `exposure: "model-only"`. The model calls it directly; codemode scripts cannot call it.
+* An `ask_user` call with an invalid payload returns an error result (`isError: true`), so the model sees a failed call.
+
+### Bug Fixes
+
+* In pi fullscreen mode, page hints show only keys that reach the form. Keys that pi's transcript takes (by default PageUp, PageDown, Home, End, and Ctrl+Shift+↑/↓) are skipped, and remapped pi keybindings are respected.
+* pi-ask no longer sets the terminal title, which left the tab title blank after every ask.
+* The tool description limits a specific requested decision to that one question. In behavior harness runs, GLM 5.3 flash no longer added unrequested questions (0 of 3 runs, before 2 of 3).
+* Page hints say "1 more option" and show `pageUp` instead of `page↑`.
+
 # 1.0.1 (2026-09-30)
 
 ### Features

@@ -377,7 +377,7 @@ test("tree navigation reopens a pending ask only on the new branch and only once
 	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
 });
 
-test("recovered ask sets and clears the waiting footer and title on cancel", {
+test("recovered ask sets and clears the waiting footer, leaving the title, on cancel", {
 	timeout: 2000,
 }, async () => {
 	getAskConfigStore().setConfig(disabledNotificationConfig());
@@ -412,7 +412,7 @@ test("recovered ask sets and clears the waiting footer and title on cancel", {
 		["pi-ask", "question 1 of 1"],
 		["pi-ask", undefined],
 	]);
-	assert.deepEqual(titles, ["pi ask: question 1 of 1", ""]);
+	assert.deepEqual(titles, []);
 	remoteAsk.disposeAll();
 	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
 });

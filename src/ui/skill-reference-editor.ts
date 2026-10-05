@@ -33,7 +33,7 @@ export class SkillReferenceEditor extends Editor {
 		if (!SKILL_COMPLETION_PREFIX.test(before)) {
 			return;
 		}
-		// Private in pi-tui 0.84.1-0.87.1: no public request-menu API exists.
+		// Private in pi-tui 0.99.0-1.0.2: no public request-menu API exists.
 		// If a later pi-tui renames it, skip the mid-line menu instead of throwing
 		// on every keystroke; line-start completion still works through pi-tui.
 		const trigger: unknown = Reflect.get(this, "tryTriggerAutocomplete");

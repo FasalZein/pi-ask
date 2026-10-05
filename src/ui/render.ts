@@ -13,8 +13,9 @@ import { renderQuestionScreen } from "./render-question.ts";
 import { renderSubmitScreen } from "./render-submit.ts";
 import type { QuestionRenderContext, Theme } from "./render-types.ts";
 
-const UP_SUFFIX = /Up$/;
-const DOWN_SUFFIX = /Down$/;
+// Only arrow keys become glyphs; "pageUp" keeps its name.
+const UP_SUFFIX = /(?<=^|\+)Up$/;
+const DOWN_SUFFIX = /(?<=^|\+)Down$/;
 
 export interface AskViewport {
 	bodyRows: number;
@@ -42,10 +43,15 @@ export function renderAskScreen(args: {
 	viewport?: AskViewport;
 	previewScrollTop?: number;
 	onPreviewScrollTop?: (top: number) => void;
+	/**
+	 * Lower-case keys that pi's fullscreen transcript consumes before the form.
+	 * Undefined outside fullscreen.
+	 */
+	transcriptKeys?: ReadonlySet<string>;
 }): string[] {
 	const { config, footerNotice, reviewShortcutHint, state, theme, width } =
 		args;
-	const pageKeys = pagingLabels(config);
+	const pageKeys = pagingLabels(config, args.transcriptKeys);
 	const header: string[] = [];
 	const body: string[] = [];
 	const footer = renderAskFooter(config, footerNotice, state, theme, width);
@@ -252,17 +258,19 @@ function windowAskBody(args: {
 	movePreviewRegion(viewport, header.length + 1 - top);
 	const above = starts.filter((start) => start < top).length;
 	const below = starts.filter((start) => start >= top + pageSize).length;
-	const noun = isSubmitTab(state) ? "actions" : "options";
+	const noun = isSubmitTab(state) ? "action" : "option";
+	const counted = (count: number) =>
+		`${count} more ${noun}${count === 1 ? "" : "s"}`;
 	const up = above
 		? fitPageHint(
-				`   ↑ ${above} more ${noun} above · ${pageKeys.up}`,
+				`   ↑ ${counted(above)} above${keyHint(pageKeys.up)}`,
 				`↑ ${above} more`,
 				width
 			)
 		: "";
 	const down = below
 		? fitPageHint(
-				`   ↓ ${below} more ${noun} below · ${pageKeys.down}`,
+				`   ↓ ${counted(below)} below${keyHint(pageKeys.down)}`,
 				`↓ ${below} more`,
 				width
 			)
@@ -322,15 +330,32 @@ function getQuestionWindowTop(
 	return top;
 }
 
+function keyHint(label: string): string {
+	return label ? ` · ${label}` : "";
+}
+
 function pageKeyLabel(key: string): string {
 	return formatKeybindingLabel(key)
 		.replace(UP_SUFFIX, "↑")
 		.replace(DOWN_SUFFIX, "↓");
 }
 
-function pagingLabels(config: AskConfig) {
+function pagingLabel(
+	keys: readonly string[],
+	transcriptKeys: ReadonlySet<string> | undefined
+): string {
+	const key = transcriptKeys
+		? keys.find((candidate) => !transcriptKeys.has(candidate.toLowerCase()))
+		: keys[0];
+	return key ? pageKeyLabel(key) : "";
+}
+
+function pagingLabels(
+	config: AskConfig,
+	transcriptKeys: ReadonlySet<string> | undefined
+) {
 	return {
-		up: pageKeyLabel(config.keymaps.main.pageUp[0] ?? "shift+up"),
-		down: pageKeyLabel(config.keymaps.main.pageDown[0] ?? "shift+down"),
+		up: pagingLabel(config.keymaps.main.pageUp, transcriptKeys),
+		down: pagingLabel(config.keymaps.main.pageDown, transcriptKeys),
 	};
 }
