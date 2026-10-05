@@ -33,9 +33,9 @@ pi-ask is not published to npm. Install it from GitHub.
 - `Ctrl+V` (`Alt+V` on Windows) pastes a clipboard image as a temporary file path, as in pi's main editor.
 - Notes: `n` adds a note to an option, and `Shift+N` adds a note to the question.
 - Review tab with three actions: Submit returns the answers, Elaborate asks the agent to reply to your notes first, and Cancel closes the ask without answers.
-- Long lists and review answers page with `Shift+Up`/`Shift+Down` or `PageUp`/`PageDown`. In pi fullscreen mode, the mouse wheel scrolls them too.
+- Long lists and review answers page with `Shift+Up`/`Shift+Down` or `PageUp`/`PageDown`. In pi fullscreen mode, `PageUp`, `PageDown`, `Home`, and `End` scroll pi's transcript, so use `Shift+Up`/`Shift+Down` to page the form and `Ctrl+A`/`Ctrl+E` to move to the line start or end in editors. In fullscreen mode, the mouse wheel scrolls the form too.
 - The preview box uses the free rows of the terminal. Longer previews scroll with `[` and `]`.
-- A waiting indicator in the pi footer and the terminal title while an ask is open. Optional notifications (terminal bell or a shell command) tell you that a question waits.
+- A waiting indicator in the pi footer while an ask is open. Optional notifications (terminal bell or a shell command) tell you that a question waits.
 - Settings with `?` in the ask flow or `/ask-settings` in pi. You can change the keys of the ask flow. The number keys `1` to `9` and `@` are fixed.
 - Recovery: if pi stops while an ask is open, pi-ask opens the unanswered ask again on startup, resume, fork, or `/tree` navigation. After you submit or cancel the recovered ask, it does not open automatically again.
 - RPC mode uses pi dialogs. Other extensions in the same pi process can follow and answer an ask through local events. See [`docs/remote-events.md`](docs/remote-events.md).

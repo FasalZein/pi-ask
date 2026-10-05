@@ -278,7 +278,7 @@ Arrays are aliases: any listed key triggers the same action.
 - `noteEditor`: question/option note editor
 - `settingsModal`: `/ask-settings` and `?` settings overlay
 
-The main-flow `pageUp` / `pageDown` actions move question focus by a visible page or scroll review answers with the selected action pinned. Their default aliases are Shift+Up / PageUp and Shift+Down / PageDown. `previewUp` / `previewDown` scroll a long preview independently, with `[` and `]` as defaults. These actions may be remapped when a terminal takes the defaults. Existing version 5 configs without these four actions receive their defaults in memory; pi-ask does not rewrite the config file. Pi select up/down/confirm aliases also work in the ask flow. Pi select cancel is not used.
+The main-flow `pageUp` / `pageDown` actions move question focus by a visible page or scroll review answers with the selected action pinned. Their default aliases are Shift+Up / PageUp and Shift+Down / PageDown. In pi fullscreen mode, pi's transcript takes PageUp and PageDown first, so only Shift+Up / Shift+Down reach the ask flow. `previewUp` / `previewDown` scroll a long preview independently, with `[` and `]` as defaults. These actions may be remapped when a terminal takes the defaults. Existing version 5 configs without these four actions receive their defaults in memory; pi-ask does not rewrite the config file. Pi select up/down/confirm aliases also work in the ask flow. Pi select cancel is not used.
 
 ### Allowed bindings
 

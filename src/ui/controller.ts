@@ -295,6 +295,7 @@ function renderController(
 		},
 		config: controller.config,
 		editor: controller.editor,
+		fullscreen: controller.tui.mode === "fullscreen",
 		footerNotice: getFooterNotice(controller),
 		reviewShortcutHint: getActiveReviewShortcutHint(controller),
 		state: controller.state,

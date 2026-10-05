@@ -14,6 +14,8 @@ const theme = {
 const editor = { getText: () => "", render: () => [] } as never;
 const ABOVE_OPTIONS = /↑ \d+ more options above/;
 const BELOW_ANSWERS = /↓ \d+ more below/;
+const SIX_ABOVE_WITHOUT_KEY = /↑ 6 more options above\n/;
+const ONE_ABOVE_SINGULAR = /↑ 1 more option above · Shift\+↑/;
 const params = {
 	title: "Demo",
 	questions: [
@@ -679,4 +681,80 @@ test("ask render reserves pi dock rows for footer, status, and widgets", async (
 	component.handleInput("\u0003");
 	await flow;
 	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+});
+
+test("fullscreen page hints skip keys that pi's transcript consumes", () => {
+	let state = createInitialState(params);
+	for (let index = 0; index < 11; index++) {
+		state = moveOption(state, 1);
+	}
+	const config = {
+		...DEFAULT_ASK_CONFIG,
+		keymaps: {
+			...DEFAULT_ASK_CONFIG.keymaps,
+			main: {
+				...DEFAULT_ASK_CONFIG.keymaps.main,
+				pageUp: ["pageUp", "shift+up"],
+				pageDown: ["pageDown", "shift+down"],
+			},
+		},
+	};
+	const render = (fullscreen: boolean, renderConfig = config) =>
+		renderAskScreen({
+			config: renderConfig,
+			state,
+			theme,
+			width: 80,
+			editor,
+			fullscreen,
+			viewport: {
+				rows: 18,
+				scrollTop: 0,
+				reviewScrollTop: 0,
+				reviewPageRows: 0,
+				optionStarts: [] as number[],
+				bodyRows: 0,
+			},
+		}).join("\n");
+	const regular = render(false);
+	assert.ok(regular.includes("more options above · pageUp"));
+	assert.ok(regular.includes("more options below · pageDown"));
+	const fullscreen = render(true);
+	assert.ok(fullscreen.includes("more options above · Shift+↑"));
+	assert.ok(fullscreen.includes("more options below · Shift+↓"));
+	assert.ok(!fullscreen.includes("pageUp"));
+	assert.ok(!fullscreen.includes("pageDown"));
+	const onlyPageKeys = render(true, {
+		...config,
+		keymaps: {
+			...config.keymaps,
+			main: { ...config.keymaps.main, pageUp: ["pageUp"], pageDown: ["end"] },
+		},
+	});
+	assert.match(onlyPageKeys, SIX_ABOVE_WITHOUT_KEY);
+	assert.ok(!onlyPageKeys.includes("pageUp"));
+	assert.ok(!onlyPageKeys.includes(" · End"));
+});
+
+test("page indicators use the singular noun for one hidden option", () => {
+	let state = createInitialState(params);
+	state = moveOption(state, 1);
+	state = moveOption(state, 1);
+	const lines = renderAskScreen({
+		config: DEFAULT_ASK_CONFIG,
+		state,
+		theme,
+		width: 80,
+		editor,
+		viewport: {
+			rows: 14,
+			scrollTop: 0,
+			reviewScrollTop: 0,
+			reviewPageRows: 0,
+			optionStarts: [] as number[],
+			bodyRows: 0,
+		},
+	}).join("\n");
+	assert.match(lines, ONE_ABOVE_SINGULAR);
+	assert.ok(!lines.includes("1 more options"));
 });

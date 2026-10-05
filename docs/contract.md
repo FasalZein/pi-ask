@@ -255,7 +255,7 @@ Main flow:
 - `global.dismiss` dismisses the active ask surface; default: `Ctrl+C`
 - `main.nextTab` / `main.previousTab` move between tabs; defaults: `Tab`/`Right`, `Shift+Tab`/`Left`
 - `main.nextOption` / `main.previousOption` move between options, or between review actions; defaults: `Down`, `Up`
-- `main.pageUp` / `main.pageDown` move question focus by one visible page, or scroll review answers without moving the selected action; defaults: `Shift+Up` / `PageUp`, `Shift+Down` / `PageDown`
+- `main.pageUp` / `main.pageDown` move question focus by one visible page, or scroll review answers without moving the selected action; defaults: `Shift+Up` / `PageUp`, `Shift+Down` / `PageDown`; in pi fullscreen mode, pi's transcript takes `PageUp`, `PageDown`, `Home`, and `End` before the ask flow, so `Shift+Up` / `Shift+Down` page the form and the page indicators show only bindings that reach the form
 - `main.previewUp` / `main.previewDown` scroll long preview text in a bounded preview pane, without moving option focus; defaults: `[` and `]`
 - `main.confirm`, `main.cancel`, and `main.toggle` confirm, cancel, or toggle; defaults: `Enter`, `Esc`, `Space`
 - `main.changeQuestionType` changes the active question type (non-preview: `single <-> multi`; preview: `preview <-> multi`); default: `t`; destructive `multi -> single` changes require pressing the type hotkey again, with no timeout, and the pending confirmation clears on other navigation/actions
@@ -277,7 +277,7 @@ Editing flow:
 - `editor.close` / `noteEditor.close` save draft and close the editor; default: `Esc`
 - `global.dismiss` dismisses the entire flow immediately without saving the current editor draft when no dirty-dismiss confirmation is pending
 - `global.settings` opens ask settings when the editor is empty; otherwise the key is delegated to the editor as text/input
-- when editor has text, arrow keys and `Tab` stay in the editor so the cursor can move while typing
+- when editor has text, arrow keys and `Tab` stay in the editor so the cursor can move while typing; in pi fullscreen mode, `Home` and `End` scroll pi's transcript, so `Ctrl+A` / `Ctrl+E` move to the line start or end
 - when editor is empty, editor-context `*WhenEmpty` navigation actions move options or tabs without requiring the editor close binding first
 - `@` remains a fixed file-reference affordance in editors; `/` at the start of text or after whitespace opens pi skill completion; Tab selects the highlighted skill, and Enter saves or submits literal text without selecting an automatically opened skill list
 
@@ -294,7 +294,7 @@ Dirty dismiss:
 
 ## Execution and lifecycle
 
-While an interactive ask flow is open, pi-ask sets the `pi-ask` footer status and terminal title to the current question number, or to review. Both update when the active tab changes and clear when the flow submits, cancels, aborts, or errors. This also applies to recovered TUI asks and RPC dialogs. Non-interactive calls do not show a waiting indicator.
+While an interactive ask flow is open, pi-ask sets the `pi-ask` footer status to the current question number, or to review. The status updates when the active tab changes and clears when the flow submits, cancels, aborts, or errors. pi-ask does not change the terminal title, because pi has no API to restore it. This also applies to recovered TUI asks and RPC dialogs. Non-interactive calls do not show a waiting indicator.
 
 `ask_user` registers with `exposure: "model-only"`: pi declares it to the model, and codemode scripts and other tools cannot call it through `ctx.executeTool()`. It stays declared when `codemode.mode` is `"only"`.
 

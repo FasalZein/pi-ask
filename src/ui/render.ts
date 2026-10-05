@@ -12,8 +12,16 @@ import { renderQuestionScreen } from "./render-question.ts";
 import { renderSubmitScreen } from "./render-submit.ts";
 import type { QuestionRenderContext, Theme } from "./render-types.ts";
 
-const UP_SUFFIX = /Up$/;
-const DOWN_SUFFIX = /Down$/;
+// Only arrow keys become glyphs; "pageUp" keeps its name.
+const UP_SUFFIX = /(?<=^|\+)Up$/;
+const DOWN_SUFFIX = /(?<=^|\+)Down$/;
+// pi's fullscreen transcript consumes these keys before the ask form sees them.
+const FULLSCREEN_TRANSCRIPT_KEYS = new Set([
+	"pageup",
+	"pagedown",
+	"home",
+	"end",
+]);
 
 export interface AskViewport {
 	bodyRows: number;
@@ -41,10 +49,12 @@ export function renderAskScreen(args: {
 	viewport?: AskViewport;
 	previewScrollTop?: number;
 	onPreviewScrollTop?: (top: number) => void;
+	/** True when pi runs its fullscreen TUI, which owns PageUp/PageDown/Home/End. */
+	fullscreen?: boolean;
 }): string[] {
 	const { config, footerNotice, reviewShortcutHint, state, theme, width } =
 		args;
-	const pageKeys = pagingLabels(config);
+	const pageKeys = pagingLabels(config, args.fullscreen ?? false);
 	const header: string[] = [];
 	const body: string[] = [];
 	const footer = renderAskFooter(config, footerNotice, state, theme, width);
@@ -248,10 +258,12 @@ function windowAskBody(args: {
 	movePreviewRegion(viewport, header.length + 1 - top);
 	const above = starts.filter((start) => start < top).length;
 	const below = starts.filter((start) => start >= top + pageSize).length;
-	const noun = isSubmitTab(state) ? "actions" : "options";
-	const up = above ? `   ↑ ${above} more ${noun} above · ${pageKeys.up}` : "";
+	const noun = isSubmitTab(state) ? "action" : "option";
+	const counted = (count: number) =>
+		`${count} more ${noun}${count === 1 ? "" : "s"}`;
+	const up = above ? `   ↑ ${counted(above)} above${keyHint(pageKeys.up)}` : "";
 	const down = below
-		? `   ↓ ${below} more ${noun} below · ${pageKeys.down}`
+		? `   ↓ ${counted(below)} below${keyHint(pageKeys.down)}`
 		: "";
 	return [
 		...header,
@@ -308,15 +320,28 @@ function getQuestionWindowTop(
 	return top;
 }
 
+function keyHint(label: string): string {
+	return label ? ` · ${label}` : "";
+}
+
 function pageKeyLabel(key: string): string {
 	return formatKeybindingLabel(key)
 		.replace(UP_SUFFIX, "↑")
 		.replace(DOWN_SUFFIX, "↓");
 }
 
-function pagingLabels(config: AskConfig) {
+function pagingLabel(keys: readonly string[], fullscreen: boolean): string {
+	const key = fullscreen
+		? keys.find(
+				(candidate) => !FULLSCREEN_TRANSCRIPT_KEYS.has(candidate.toLowerCase())
+			)
+		: keys[0];
+	return key ? pageKeyLabel(key) : "";
+}
+
+function pagingLabels(config: AskConfig, fullscreen: boolean) {
 	return {
-		up: pageKeyLabel(config.keymaps.main.pageUp[0] ?? "shift+up"),
-		down: pageKeyLabel(config.keymaps.main.pageDown[0] ?? "shift+down"),
+		up: pagingLabel(config.keymaps.main.pageUp, fullscreen),
+		down: pagingLabel(config.keymaps.main.pageDown, fullscreen),
 	};
 }
