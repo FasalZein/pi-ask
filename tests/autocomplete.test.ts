@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
 import { createAskAutocompleteProvider } from "../src/ui/autocomplete.ts";
@@ -6,7 +9,6 @@ import { createAskAutocompleteProvider } from "../src/ui/autocomplete.ts";
 const SKILL_MENU_ITEM = /skill:tdd/;
 const BRAINSTORM_MENU_ITEM = /skill:brainstorm/;
 const USER_STORY_MENU_ITEM = /skill:user-story/;
-const VOLUMES_PATH = /^see \/Volumes\/$/;
 const USERS_PATH = /^see \/(?:Users|usr)\/$/;
 const skills = [
 	{
@@ -350,10 +352,13 @@ test("Tab accepts the highlighted skill, and falls back to paths without a skill
 	editor.handleInput("\t");
 	assert.equal(editor.getText(), "a /skill:brainstorm ");
 
-	editor.setText("see /Volu");
+	// An absolute fixture path completes the same way on every platform.
+	const root = mkdtempSync(join(tmpdir(), "pi-ask-paths-"));
+	mkdirSync(join(root, "volumes-fixture"));
+	editor.setText(`see ${root}/volu`);
 	editor.handleInput("\t");
 	await waitForMenu();
-	assert.match(editor.getText(), VOLUMES_PATH);
+	assert.equal(editor.getText(), `see ${root}/volumes-fixture/`);
 });
 
 test("see /us with an open skill list accepts its highlighted skill on Tab", async () => {
