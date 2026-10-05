@@ -124,6 +124,14 @@ test("ask_user runs sequentially with other tools in its batch", () => {
 	);
 });
 
+test("ask_user is declared to the model but not callable from codemode scripts", () => {
+	const { tool } = registerMockTool();
+	assert.equal(
+		(tool as typeof tool & { exposure?: string }).exposure,
+		"model-only"
+	);
+});
+
 test("a pre-aborted ask returns without opening the UI", async () => {
 	const { tool } = registerMockTool();
 	const abort = new AbortController();
@@ -421,6 +429,7 @@ test("ask tool rejects invalid payloads before UI opens with structured issues",
 		makeCtx(true)
 	);
 
+	assert.equal(result.isError, true);
 	assert.equal(result.details.cancelled, true);
 	assert.equal(result.details.cancelReason, "invalid_input");
 	assert.equal(result.details.mode, "submit");

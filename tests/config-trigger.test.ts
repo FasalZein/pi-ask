@@ -61,8 +61,7 @@ const beforeStart = handlers.get("before_agent_start");
 const visible = [];
 const context = { messages: [] };
 const sessionManager = {
-  getBranch() { return []; },
-  buildSessionContext() { return context; },
+  buildSessionProjection() { return context; },
 };
 const run = () => beforeStart({ prompt: "Change the ask_user keymap", systemPrompt: "base" }, { sessionManager });
 const first = await run();
@@ -73,9 +72,7 @@ const afterCompaction = await run();
 const quiet = await beforeStart({ prompt: "Refactor the query", systemPrompt: "base" }, { sessionManager });
 const newerContext = { messages: [{ role: "custom", customType: "pi_ask_config" }] };
 const projectionManager = {
-  getBranch() { return []; },
   buildSessionProjection() { return newerContext; },
-  buildSessionContext() { throw Error("projection should take precedence"); },
 };
 const projected = await beforeStart({ prompt: "ask_user keybinding", systemPrompt: "base" }, { sessionManager: projectionManager });
 console.log(JSON.stringify({ first, repeated, afterCompaction, quiet, projected }));

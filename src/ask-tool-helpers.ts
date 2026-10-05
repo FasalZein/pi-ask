@@ -53,6 +53,7 @@ export function invalidPayloadResponse(
 	return {
 		content: [{ type: "text" as const, text: formatValidationError(issues) }],
 		details: errorResultDetails(params, issues),
+		isError: true,
 	};
 }
 

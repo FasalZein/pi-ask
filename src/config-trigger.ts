@@ -6,31 +6,20 @@ export function matchesConfigPrompt(prompt: string): boolean {
 	return CONFIG_TERMS.test(prompt);
 }
 
-// Projection includes only messages in the current model context. Hosts before 0.87
-// expose that context through buildSessionContext instead.
-interface ContextMessages {
-	messages: readonly { role: string; customType?: string }[];
-}
-
+// Projection includes only messages in the current model context.
 interface ContextSessionManager {
-	// The 0.87 read-only type omits this method, but older hosts expose it.
-	buildSessionContext?: () => ContextMessages;
-	buildSessionProjection?: () => ContextMessages;
-	getBranch: () => unknown;
+	buildSessionProjection: () => {
+		messages: readonly { role: string; customType?: string }[];
+	};
 }
 
 export function hasActiveConfigMessage(
 	sessionManager: ContextSessionManager
 ): boolean {
-	const context =
-		typeof sessionManager.buildSessionProjection === "function"
-			? sessionManager.buildSessionProjection()
-			: sessionManager.buildSessionContext?.();
-	if (!context) {
-		throw new Error("pi-ask requires a session context method");
-	}
-	return context.messages.some(
-		(message) =>
-			message.role === "custom" && message.customType === "pi_ask_config"
-	);
+	return sessionManager
+		.buildSessionProjection()
+		.messages.some(
+			(message) =>
+				message.role === "custom" && message.customType === "pi_ask_config"
+		);
 }

@@ -100,7 +100,7 @@ Unsupported future versions or invalid files are left unchanged and defaults are
 
 ## Main editor replay shortcut
 
-`shortcuts.replay` runs the same current-branch replay flow as `/ask:replay`, including its notice when no ask is available. The default is `"ctrl+shift+r"`. It is not a Pi 0.87.1 built-in binding or a pi-ask form binding. Set it to another supported Pi key id (for example `"alt+f7"`) or to `null` to turn it off. This is a main-editor shortcut, not a keymap inside the ask flow. Pi reports conflicts with other extension shortcuts and custom built-in keybindings at load. An invalid key id falls back to the default with a warning. Existing version 5 and legacy files without `shortcuts` use the default in memory; loading does not rewrite them. The shortcut registers at extension load, so run `/reload` or restart Pi after changing it. Settings saved during a session do not change the registered shortcut until reload.
+`shortcuts.replay` runs the same current-branch replay flow as `/ask:replay`, including its notice when no ask is available. The default is `"ctrl+shift+r"`. It is not a Pi 1.0.2 built-in binding or a pi-ask form binding. Set it to another supported Pi key id (for example `"alt+f7"`) or to `null` to turn it off. This is a main-editor shortcut, not a keymap inside the ask flow. Pi reports conflicts with other extension shortcuts and custom built-in keybindings at load. An invalid key id falls back to the default with a warning. Existing version 5 and legacy files without `shortcuts` use the default in memory; loading does not rewrite them. The shortcut registers at extension load, so run `/reload` or restart Pi after changing it. Settings saved during a session do not change the registered shortcut until reload.
 
 ## Answer extraction
 
@@ -278,7 +278,7 @@ Arrays are aliases: any listed key triggers the same action.
 - `noteEditor`: question/option note editor
 - `settingsModal`: `/ask-settings` and `?` settings overlay
 
-The main-flow `pageUp` / `pageDown` actions move question focus by a visible page or scroll review answers with the selected action pinned. Their default aliases are Shift+Up / PageUp and Shift+Down / PageDown. `previewUp` / `previewDown` scroll a long preview independently, with `[` and `]` as defaults. These actions may be remapped when a terminal takes the defaults. Existing version 5 configs without these four actions receive their defaults in memory; pi-ask does not rewrite the config file. Pi select up/down/confirm aliases also work in the ask flow. Pi select cancel is not used.
+The main-flow `pageUp` / `pageDown` actions move question focus by a visible page or scroll review answers with the selected action pinned. Their default aliases are Shift+Up / PageUp and Shift+Down / PageDown. In pi fullscreen mode, pi's transcript takes PageUp and PageDown first, so only Shift+Up / Shift+Down reach the ask flow. `previewUp` / `previewDown` scroll a long preview independently, with `[` and `]` as defaults. These actions may be remapped when a terminal takes the defaults. Existing version 5 configs without these four actions receive their defaults in memory; pi-ask does not rewrite the config file. Pi select up/down/confirm aliases also work in the ask flow. Pi select cancel is not used.
 
 ### Allowed bindings
 

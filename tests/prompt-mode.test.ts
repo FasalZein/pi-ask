@@ -57,8 +57,6 @@ function registeredText(mode: string | undefined) {
 	};
 }
 
-const compactDescription =
-	"Interactive clarification tool for cases where the next step depends on user preferences, missing requirements, or choosing between multiple valid directions. Ask a short structured interview, collect normalized answers, and continue using those answers explicitly instead of guessing.";
 const compactGuideline =
 	"Use `ask_user` before preference-sensitive decisions (scope, tone, UX, naming, architecture, docs, implementation direction), or when several valid directions exist; ask 1-3 concise questions instead of choosing one path yourself.";
 const followUpGuideline =
@@ -79,7 +77,6 @@ test("registered tool uses the concise text and label-only schema", () => {
 	assert.equal(compact.tools.length, 2);
 	assert.deepEqual(compact.tools[0], compact.tools[1]);
 	const tool = compact.tools[0];
-	assert.equal(tool.description, compactDescription);
 	assert.deepEqual(tool.promptGuidelines, [
 		compactGuideline,
 		followUpGuideline,
@@ -120,6 +117,16 @@ test("registered tool uses the concise text and label-only schema", () => {
 			questions: [{ id: "q", prompt: "Pick", options: [{ value: "a" }] }],
 		}),
 		false
+	);
+});
+
+test("tool description bounds a specific decision without expanding the ask", () => {
+	const description = compact.tools[0].description;
+	assert.ok(description.includes("ask that question only"));
+	assert.ok(
+		description.includes(
+			"do not add other requirements or confirmation questions"
+		)
 	);
 });
 

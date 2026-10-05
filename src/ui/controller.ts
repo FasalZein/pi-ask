@@ -3,7 +3,12 @@ import {
 	type ExtensionContext,
 	getSelectListTheme,
 } from "@earendil-works/pi-coding-agent";
-import { type Component, Container, type Editor } from "@earendil-works/pi-tui";
+import {
+	type Component,
+	Container,
+	type Editor,
+	type TuiMouseEvent,
+} from "@earendil-works/pi-tui";
 import type { AskConfig } from "../config/schema.ts";
 import { getAskConfigStore } from "../config/store.ts";
 import {
@@ -77,13 +82,6 @@ type Tui = CustomCallbackArgs[0];
 type Theme = CustomCallbackArgs[1];
 type Keybindings = CustomCallbackArgs[2];
 type Done = (result: AskResult) => void;
-// pi-tui 0.84.x has no component mouse types. Newer fullscreen hosts call this method.
-interface AskMouseEvent {
-	type: string;
-	wheelDelta?: number;
-	x: number;
-	y: number;
-}
 interface AskFlowOptions {
 	allowFreeform?: boolean;
 	exec: ExtensionAPI["exec"];
@@ -260,7 +258,7 @@ function createAskFlowController(
 		handleInput(data: string) {
 			handleControllerInput(controller, data);
 		},
-		handleMouse(event: AskMouseEvent) {
+		handleMouse(event: TuiMouseEvent) {
 			return handleWheel(controller, event);
 		},
 		dispose() {
@@ -284,6 +282,36 @@ function createAskViewport(rows: number): AskViewport {
 	};
 }
 
+// pi-tui's fullscreen viewport consumes these actions before a non-overlay
+// component sees the key (TuiAltScreen.handleViewportInput). Search
+// navigation keys apply only while search is open, so they are not listed.
+const FULLSCREEN_TRANSCRIPT_ACTIONS = [
+	"tui.altScreen.search",
+	"tui.altScreen.pageUp",
+	"tui.altScreen.pageDown",
+	"tui.altScreen.halfPageUp",
+	"tui.altScreen.halfPageDown",
+	"tui.altScreen.lineUp",
+	"tui.altScreen.lineDown",
+	"tui.altScreen.previousPrompt",
+	"tui.altScreen.nextPrompt",
+	"tui.altScreen.top",
+	"tui.altScreen.bottom",
+] as const;
+
+function getTranscriptKeys(
+	controller: AskFlowController
+): ReadonlySet<string> | undefined {
+	if (controller.tui.mode !== "fullscreen") {
+		return;
+	}
+	return new Set(
+		FULLSCREEN_TRANSCRIPT_ACTIONS.flatMap((action) =>
+			controller.keybindings.getKeys(action)
+		).map((key) => key.toLowerCase())
+	);
+}
+
 function renderController(
 	controller: AskFlowController,
 	width: number
@@ -297,6 +325,7 @@ function renderController(
 		},
 		config: controller.config,
 		editor: controller.editor,
+		transcriptKeys: getTranscriptKeys(controller),
 		footerNotice: getFooterNotice(controller),
 		reviewShortcutHint: getActiveReviewShortcutHint(controller),
 		state: controller.state,
@@ -335,7 +364,7 @@ function availableAskRows(
 
 function handleWheel(
 	controller: AskFlowController,
-	event: AskMouseEvent
+	event: TuiMouseEvent
 ): { handled: true } | undefined {
 	if (controller.finished || event.type !== "wheel" || !event.wheelDelta) {
 		return;
@@ -359,7 +388,7 @@ function handleWheel(
 
 function getWheelTarget(
 	controller: AskFlowController,
-	event: AskMouseEvent
+	event: TuiMouseEvent
 ):
 	| {
 			top: number;

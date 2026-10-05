@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { getNativeClipboard } from "@earendil-works/pi-tui";
 
 // Matches pi-tui's NativeClipboard read methods. Undefined means unavailable,
 // null means empty.
@@ -18,27 +19,9 @@ const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];
 const RIFF_HEADER_BYTES = 8;
 
-// pi-tui exports getNativeClipboard from 0.86.0. The 0.84.1 floor lacks it, so
-// resolve it at runtime; a static named import would fail to load there.
-export async function loadNativeClipboard(): Promise<
-	PasteClipboard | undefined
-> {
-	const piTui: object = await import("@earendil-works/pi-tui");
-	const getNativeClipboard: unknown = Reflect.get(piTui, "getNativeClipboard");
-	if (typeof getNativeClipboard !== "function") {
-		return;
-	}
-	const clipboard: unknown = getNativeClipboard();
-	return isPasteClipboard(clipboard) ? clipboard : undefined;
-}
-
-function isPasteClipboard(value: unknown): value is PasteClipboard {
-	return (
-		typeof value === "object" &&
-		value !== null &&
-		typeof Reflect.get(value, "getImage") === "function" &&
-		typeof Reflect.get(value, "getText") === "function"
-	);
+// The executor turns a throwing platform helper into a rejection the caller ignores.
+export function loadNativeClipboard(): Promise<PasteClipboard | undefined> {
+	return new Promise((resolve) => resolve(getNativeClipboard()));
 }
 
 // Same flow as pi's main editor (interactive-mode handleClipboardPaste): save a

@@ -59,7 +59,7 @@ Notes:
 
 - `pnpm check` runs `ultracite check` (no writes); `pnpm run fix` applies fixes.
 - `pnpm test` runs the Node test runner against `tests/*.test.ts`.
-- The 4 gates are `pnpm test`, `pnpm typecheck`, `pnpm run check:ci`, and `pnpm run check:pi-floor` (typecheck and tests against pi 0.84.1 in a temp copy).
+- The 4 gates are `pnpm test`, `pnpm typecheck`, `pnpm run check:ci`, and `pnpm run check:pi-floor` (typecheck and tests against pi 0.99.0 in a temp copy).
 - the extension is intended to be loaded dynamically with:
 
 ```bash

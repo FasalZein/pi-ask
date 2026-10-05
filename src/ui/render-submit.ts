@@ -137,9 +137,13 @@ function renderReviewAnswers(
 	return {
 		answers: { start, end: start + rows, maxTop },
 		lines: [
-			...indicator(above ? ` ↑ ${above} more above · ${pageKeys.up}` : ""),
+			...indicator(
+				above ? ` ↑ ${above} more above${keyHint(pageKeys.up)}` : ""
+			),
 			...answers.slice(top, top + rows),
-			...indicator(below ? ` ↓ ${below} more below · ${pageKeys.down}` : ""),
+			...indicator(
+				below ? ` ↓ ${below} more below${keyHint(pageKeys.down)}` : ""
+			),
 		],
 	};
 }
@@ -255,4 +259,8 @@ function renderReviewShortcutHint(
 		pushWrappedText(lines, hint, width, theme, "dim", " ", " ");
 	}
 	return lines;
+}
+
+function keyHint(label: string): string {
+	return label ? ` · ${label}` : "";
 }

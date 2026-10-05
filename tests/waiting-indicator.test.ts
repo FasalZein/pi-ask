@@ -107,16 +107,23 @@ async function waitForOpen(flow: ReturnType<typeof setup>) {
 }
 
 function expectPosition(events: IndicatorEvent[], position: string) {
-	assert.deepEqual(events.slice(-2), [
-		{ kind: "status", key: "pi-ask", text: position },
-		{ kind: "title", text: `pi ask: ${position}` },
-	]);
+	assert.deepEqual(events.at(-1), {
+		kind: "status",
+		key: "pi-ask",
+		text: position,
+	});
 }
+// pi cannot restore a title, so the ask must never change it.
 function expectCleared(events: IndicatorEvent[]) {
-	assert.deepEqual(events.slice(-2), [
-		{ kind: "status", key: "pi-ask", text: undefined },
-		{ kind: "title", text: "" },
-	]);
+	assert.deepEqual(events.at(-1), {
+		kind: "status",
+		key: "pi-ask",
+		text: undefined,
+	});
+	assert.deepEqual(
+		events.filter((event) => event.kind === "title"),
+		[]
+	);
 }
 
 for (const mode of ["tui", "rpc"] as const) {

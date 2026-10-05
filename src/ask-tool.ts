@@ -34,6 +34,8 @@ export function registerAskTool(
 ) {
 	pi.registerTool({
 		executionMode: "sequential",
+		// Codemode scripts must not open an interactive prompt the model cannot see.
+		exposure: "model-only",
 		name: "ask_user",
 		label: "Ask User",
 		description: ASK_TOOL_DESCRIPTION,
