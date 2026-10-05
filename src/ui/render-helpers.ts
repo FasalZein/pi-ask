@@ -29,6 +29,25 @@ const EDITOR_SCROLL_BORDER_PATTERN = /^─── [↑↓] \d+ more ─*$/;
 const ANSI_CONTROL_SEQUENCE = "\u001b[";
 const ANSI_TERMINATOR = "m";
 
+/**
+ * Picks a paging hint that fits the terminal: the full hint first, then a
+ * count-only fallback, then a hard clamp. Pi aborts rendering when any line
+ * is wider than the terminal, so the clamp must never be skipped.
+ */
+export function fitPageHint(
+	full: string,
+	compact: string,
+	width: number
+): string {
+	if (visibleWidth(full) <= width) {
+		return full;
+	}
+	if (visibleWidth(compact) <= width) {
+		return compact;
+	}
+	return truncateToWidth(compact, width);
+}
+
 export function pushWrappedText(
 	lines: string[],
 	text: string,

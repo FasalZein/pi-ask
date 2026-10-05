@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { createInitialState } from "../src/state/create.ts";
 import {
 	applyNumberShortcut,
@@ -10,6 +11,8 @@ import {
 	submitCustomAnswer,
 } from "../src/state/transitions.ts";
 import { renderSubmitScreen } from "../src/ui/render-submit.ts";
+
+const COMPACT_BELOW_LINE = /^↓ \d+ more$/;
 
 function plainTheme() {
 	return {
@@ -404,4 +407,42 @@ test("short terminals scroll review answers under a fixed action bar", () => {
 	assert.equal(scrolled[1], " ↑ 10 more above · Shift+↑");
 	assert.equal(scrolled.at(-3), " 12. Question 12");
 	assert.equal(scrolled.length, 10);
+});
+
+test("14-column review keeps every line within width, with compact paging hints", () => {
+	const width = 14;
+	const questions = Array.from({ length: 12 }, (_, index) => ({
+		id: `q${index + 1}`,
+		label: `Question ${index + 1}`,
+		prompt: "Choose",
+		options: [{ value: "yes", label: "Yes" }],
+	}));
+	let state = createInitialState({ questions });
+	state = {
+		...state,
+		activeTabIndex: questions.length,
+		view: { kind: "submit" },
+	};
+	const reviewWindow = { reviewPageRows: 0, reviewScrollTop: 0 };
+	const lines: string[] = [];
+	renderSubmitScreen(
+		lines,
+		state,
+		plainTheme(),
+		width,
+		undefined,
+		undefined,
+		reviewWindow,
+		10
+	);
+	for (const line of lines) {
+		assert.ok(
+			visibleWidth(line) <= width,
+			`line exceeds width ${width}: ${JSON.stringify(line)} (${visibleWidth(line)})`
+		);
+	}
+	assert.ok(
+		lines.some((line) => COMPACT_BELOW_LINE.test(line)),
+		"compact below hint keeps review paging visible without clipping"
+	);
 });
