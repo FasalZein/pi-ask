@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
 import { createAskAutocompleteProvider } from "../src/ui/autocomplete.ts";
@@ -6,8 +9,6 @@ import { createAskAutocompleteProvider } from "../src/ui/autocomplete.ts";
 const SKILL_MENU_ITEM = /skill:tdd/;
 const BRAINSTORM_MENU_ITEM = /skill:brainstorm/;
 const USER_STORY_MENU_ITEM = /skill:user-story/;
-const VOLUMES_PATH = /^see \/Volumes\/$/;
-const USERS_PATH = /^see \/(?:Users|usr)\/$/;
 const skills = [
 	{
 		name: "skill:tdd",
@@ -317,12 +318,20 @@ test("Enter retains pi's file selection for an explicit Tab list and @ mention",
 	editor.onSubmit = (value) => {
 		submitted = value;
 	};
-	editor.setText("see /us");
+	// Two entries share the prefix, so Tab opens a list on every platform.
+	const root = mkdtempSync(join(tmpdir(), "pi-ask-paths-"));
+	mkdirSync(join(root, "alpha-one"));
+	mkdirSync(join(root, "alpha-two"));
+	editor.setText(`see ${root}/alp`);
 	editor.handleInput("\t");
 	await waitForMenu();
 	assert.ok(editor.isShowingAutocomplete());
 	editor.handleInput("\r");
-	assert.match(submitted ?? "", USERS_PATH);
+	assert.ok(
+		[`see ${root}/alpha-one/`, `see ${root}/alpha-two/`].includes(
+			submitted ?? ""
+		)
+	);
 
 	const mentionEditor = await createEditor([skills[0]]);
 	let mentionSubmitted: string | undefined;
@@ -350,10 +359,13 @@ test("Tab accepts the highlighted skill, and falls back to paths without a skill
 	editor.handleInput("\t");
 	assert.equal(editor.getText(), "a /skill:brainstorm ");
 
-	editor.setText("see /Volu");
+	// An absolute fixture path completes the same way on every platform.
+	const root = mkdtempSync(join(tmpdir(), "pi-ask-paths-"));
+	mkdirSync(join(root, "volumes-fixture"));
+	editor.setText(`see ${root}/volu`);
 	editor.handleInput("\t");
 	await waitForMenu();
-	assert.match(editor.getText(), VOLUMES_PATH);
+	assert.equal(editor.getText(), `see ${root}/volumes-fixture/`);
 });
 
 test("see /us with an open skill list accepts its highlighted skill on Tab", async () => {

@@ -138,7 +138,7 @@ Update the relevant docs in the same change:
 - One branch per ticket, one PR on `FasalZein/pi-ask`, squash merge. Never rewrite pushed history.
 - Squash subjects must pass commitlint (conventional commits); pass `--subject`, because git's default merge message fails.
 - After every merge, run the 4 gates on `main`. Branches that pass alone can fail together.
-- CI (GitHub Actions) is not enabled, so local gates are the only check.
+- CI (GitHub Actions, `.github/workflows/ci.yml`) runs the 4 gates on Linux for pull requests and `main` pushes. Run the gates locally too. Tests that touch the filesystem must not assume macOS paths; `@` file completion needs `fd` (CI installs `fd-find`).
 - Release: bump `package.json` and `CHANGELOG.md` through a PR, then `gh release create vX.Y.Z -R FasalZein/pi-ask --target <merge sha>`. Never publish to npm (ADR 0004, ADR 0009).
 - When running `scripts/behavior/` on Opus: use `cpa/claude-opus-5-5`. The harness passes `--no-extensions`, so `anthropic/*` loses `pi-claude-auth` and fails with "out of extra usage". Opus interview runs can exceed 120 s; set `PI_ASK_BEHAVIOR_TIMEOUT_MS=300000`.
 

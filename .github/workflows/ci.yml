@@ -6,21 +6,32 @@ on:
     branches:
       - main
 
+# A new push to the same pull request or branch replaces the older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    # Longest observed job was 48 s; 2x, rounded up to 5 minutes.
+    timeout-minutes: 5
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      # @ file mentions use fd for path completion; Ubuntu installs it as fdfind.
+      - name: Install fd
+        run: sudo apt-get update && sudo apt-get install -y fd-find
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: pnpm
@@ -39,21 +50,25 @@ jobs:
 
   pi-floor:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Install fd
+        run: sudo apt-get update && sudo apt-get install -y fd-find
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: pnpm
 
-      - name: Typecheck and test on pi 0.84.1
+      - name: Typecheck and test on pi 0.99.0
         run: pnpm run check:pi-floor
