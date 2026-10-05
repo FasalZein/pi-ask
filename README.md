@@ -16,7 +16,7 @@ pi install git:github.com/FasalZein/pi-ask
 To pin a release, add its tag. `pi update` does not move a pinned tag.
 
 ```bash
-pi install git:github.com/FasalZein/pi-ask@v1.1.0
+pi install git:github.com/FasalZein/pi-ask@v1.1.1
 ```
 
 To try it for one run without an install:

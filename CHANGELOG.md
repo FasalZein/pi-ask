@@ -1,5 +1,11 @@
 # Changelog
 
+# 1.1.1 (2026-10-05)
+
+### Bug Fixes
+
+* Paging hints fit narrow terminals. When the full hint with its page key does not fit, it shortens to `↑ N more` / `↓ N more`. Before, pi exited with "Rendered line exceeds terminal width". Thanks to @edxeth (#13).
+
 # 1.1.0 (2026-10-05)
 
 pi-ask now needs pi 0.99.0 or later (ADR 0010). On older pi, pin `pi install git:github.com/FasalZein/pi-ask@v1.0.1`.
