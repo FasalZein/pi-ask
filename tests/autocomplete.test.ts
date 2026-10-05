@@ -9,7 +9,6 @@ import { createAskAutocompleteProvider } from "../src/ui/autocomplete.ts";
 const SKILL_MENU_ITEM = /skill:tdd/;
 const BRAINSTORM_MENU_ITEM = /skill:brainstorm/;
 const USER_STORY_MENU_ITEM = /skill:user-story/;
-const USERS_PATH = /^see \/(?:Users|usr)\/$/;
 const skills = [
 	{
 		name: "skill:tdd",
@@ -319,12 +318,20 @@ test("Enter retains pi's file selection for an explicit Tab list and @ mention",
 	editor.onSubmit = (value) => {
 		submitted = value;
 	};
-	editor.setText("see /us");
+	// Two entries share the prefix, so Tab opens a list on every platform.
+	const root = mkdtempSync(join(tmpdir(), "pi-ask-paths-"));
+	mkdirSync(join(root, "alpha-one"));
+	mkdirSync(join(root, "alpha-two"));
+	editor.setText(`see ${root}/alp`);
 	editor.handleInput("\t");
 	await waitForMenu();
 	assert.ok(editor.isShowingAutocomplete());
 	editor.handleInput("\r");
-	assert.match(submitted ?? "", USERS_PATH);
+	assert.ok(
+		[`see ${root}/alpha-one/`, `see ${root}/alpha-two/`].includes(
+			submitted ?? ""
+		)
+	);
 
 	const mentionEditor = await createEditor([skills[0]]);
 	let mentionSubmitted: string | undefined;
