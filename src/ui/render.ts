@@ -8,6 +8,7 @@ import {
 import type { AskState } from "../types.ts";
 
 import { renderFrameFooter, renderFrameHeader } from "./render-frame.ts";
+import { fitPageHint } from "./render-helpers.ts";
 import { renderQuestionScreen } from "./render-question.ts";
 import { renderSubmitScreen } from "./render-submit.ts";
 import type { QuestionRenderContext, Theme } from "./render-types.ts";
@@ -121,6 +122,7 @@ export function renderAskScreen(args: {
 		pageKeys,
 		focusStart,
 		focusEnd,
+		width,
 	});
 }
 
@@ -210,6 +212,7 @@ function windowAskBody(args: {
 	pageKeys: { up: string; down: string };
 	focusStart: number;
 	focusEnd: number;
+	width: number;
 }): string[] {
 	const {
 		viewport,
@@ -222,6 +225,7 @@ function windowAskBody(args: {
 		pageKeys,
 		focusStart,
 		focusEnd,
+		width,
 	} = args;
 	if (!viewport) {
 		return [...header, ...body, ...footer];
@@ -257,9 +261,19 @@ function windowAskBody(args: {
 	const noun = isSubmitTab(state) ? "action" : "option";
 	const counted = (count: number) =>
 		`${count} more ${noun}${count === 1 ? "" : "s"}`;
-	const up = above ? `   ↑ ${counted(above)} above${keyHint(pageKeys.up)}` : "";
+	const up = above
+		? fitPageHint(
+				`   ↑ ${counted(above)} above${keyHint(pageKeys.up)}`,
+				`↑ ${above} more`,
+				width
+			)
+		: "";
 	const down = below
-		? `   ↓ ${counted(below)} below${keyHint(pageKeys.down)}`
+		? fitPageHint(
+				`   ↓ ${counted(below)} below${keyHint(pageKeys.down)}`,
+				`↓ ${below} more`,
+				width
+			)
 		: "";
 	return [
 		...header,

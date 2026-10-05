@@ -1,7 +1,11 @@
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { UI_TEXT } from "../constants/ui.ts";
 import type { AskState } from "../types.ts";
-import { pushSavedNote, pushWrappedText } from "./render-helpers.ts";
+import {
+	fitPageHint,
+	pushSavedNote,
+	pushWrappedText,
+} from "./render-helpers.ts";
 import type { Theme } from "./render-types.ts";
 import {
 	buildReviewScreenModel,
@@ -131,18 +135,20 @@ function renderReviewAnswers(
 	reviewWindow.reviewPageRows = rows;
 	const above = starts.filter((start) => start < top).length;
 	const below = starts.filter((start) => start >= top + rows).length;
-	const indicator = (text: string) =>
-		indicators ? [truncateToWidth(theme.fg("dim", text), width)] : [];
+	const indicator = (full: string, compact: string) =>
+		indicators ? [theme.fg("dim", fitPageHint(full, compact, width))] : [];
 	const start = indicators ? 1 : 0;
 	return {
 		answers: { start, end: start + rows, maxTop },
 		lines: [
 			...indicator(
-				above ? ` ↑ ${above} more above${keyHint(pageKeys.up)}` : ""
+				above ? ` ↑ ${above} more above${keyHint(pageKeys.up)}` : "",
+				`↑ ${above} more`
 			),
 			...answers.slice(top, top + rows),
 			...indicator(
-				below ? ` ↓ ${below} more below${keyHint(pageKeys.down)}` : ""
+				below ? ` ↓ ${below} more below${keyHint(pageKeys.down)}` : "",
+				`↓ ${below} more`
 			),
 		],
 	};

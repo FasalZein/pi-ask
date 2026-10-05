@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { DEFAULT_ASK_CONFIG } from "../src/config/defaults.ts";
 import type { AskConfig } from "../src/config/schema.ts";
 import { createInitialState } from "../src/state/create.ts";
@@ -15,6 +16,8 @@ const theme = {
 const editor = { getText: () => "", render: () => [] } as never;
 const ABOVE_OPTIONS = /↑ \d+ more options above/;
 const BELOW_ANSWERS = /↓ \d+ more below/;
+const COMPACT_ABOVE = /↑ \d+ more/;
+const COMPACT_BELOW = /↓ \d+ more/;
 const SIX_ABOVE_WITHOUT_KEY = /↑ 6 more options above\n/;
 const ONE_ABOVE_SINGULAR = /↑ 1 more option above · Shift\+↑/;
 const params = {
@@ -71,6 +74,57 @@ test("18-row ask keeps framing and focused option, with counts for hidden option
 	assert.ok(lines.join("\n").includes("↑ 6 more options above"));
 	assert.ok(lines.join("\n").includes("↓ 5 more options below"));
 	assert.ok(lines.at(-2)?.includes("settings"));
+});
+
+test("14-column terminals keep every ask line within width, with compact paging hints", () => {
+	const width = 14;
+	const viewport = {
+		rows: 18,
+		scrollTop: 0,
+		reviewScrollTop: 0,
+		reviewPageRows: 0,
+		optionStarts: [] as number[],
+		bodyRows: 0,
+	};
+	const render = (current: Parameters<typeof renderAskScreen>[0]["state"]) =>
+		renderAskScreen({
+			config: DEFAULT_ASK_CONFIG,
+			state: current,
+			theme,
+			width,
+			editor,
+			viewport,
+		});
+	const assertWithinWidth = (lines: string[]) => {
+		for (const line of lines) {
+			assert.ok(
+				visibleWidth(line) <= width,
+				`line exceeds width ${width}: ${JSON.stringify(line)} (${visibleWidth(line)})`
+			);
+		}
+	};
+
+	let state = createInitialState(params);
+	const initial = render(state);
+	assertWithinWidth(initial);
+	assert.ok(
+		initial.some((line) => COMPACT_BELOW.test(line)),
+		"compact below hint keeps paging visible"
+	);
+
+	for (let index = 0; index < 11; index++) {
+		state = moveOption(state, 1);
+	}
+	const scrolled = render(state);
+	assertWithinWidth(scrolled);
+	assert.ok(
+		scrolled.some((line) => COMPACT_ABOVE.test(line)),
+		"compact above hint keeps paging visible"
+	);
+	assert.ok(
+		scrolled.some((line) => COMPACT_BELOW.test(line)),
+		"compact below hint keeps paging visible"
+	);
 });
 
 test("a wrapped focused option remains fully visible", () => {
