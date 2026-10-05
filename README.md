@@ -7,7 +7,7 @@ pi-ask is a [pi](https://pi.dev) extension. It gives the agent an `ask_user` too
 
 ## Install
 
-pi-ask needs pi 0.84.0 or later. The project checks run against pi 0.87.1 and against the 0.84.1 floor.
+pi-ask needs pi 0.99.0 or later. The project checks run against pi 1.0.2 and against the 0.99.0 floor. On older pi, stay on pi-ask 1.0.1.
 
 ```bash
 pi install git:github.com/FasalZein/pi-ask
@@ -30,10 +30,10 @@ pi-ask is not published to npm. Install it from GitHub.
 - `@` file references in answer and note editors, as in pi's main editor.
 - `/` skill list in answer and note editors. Tab inserts the highlighted skill as `/skill:<name>`. Enter keeps the literal text that you typed.
 - Skills that you name in an answer load after the ask result. See [Skills and pi-better-skills](#skills-and-pi-better-skills).
-- `Ctrl+V` (`Alt+V` on Windows) pastes a clipboard image as a temporary file path, as in pi's main editor. This needs pi 0.86.0 or later. On pi 0.84.1 the key inserts nothing.
+- `Ctrl+V` (`Alt+V` on Windows) pastes a clipboard image as a temporary file path, as in pi's main editor.
 - Notes: `n` adds a note to an option, and `Shift+N` adds a note to the question.
 - Review tab with three actions: Submit returns the answers, Elaborate asks the agent to reply to your notes first, and Cancel closes the ask without answers.
-- Long lists and review answers page with `Shift+Up`/`Shift+Down` or `PageUp`/`PageDown`. In pi fullscreen on pi-tui 0.85.0 or later, the mouse wheel scrolls them too.
+- Long lists and review answers page with `Shift+Up`/`Shift+Down` or `PageUp`/`PageDown`. In pi fullscreen mode, the mouse wheel scrolls them too.
 - The preview box uses the free rows of the terminal. Longer previews scroll with `[` and `]`.
 - A waiting indicator in the pi footer and the terminal title while an ask is open. Optional notifications (terminal bell or a shell command) tell you that a question waits.
 - Settings with `?` in the ask flow or `/ask-settings` in pi. You can change the keys of the ask flow. The number keys `1` to `9` and `@` are fixed.
@@ -98,7 +98,7 @@ pnpm run check:ci
 pnpm run check:pi-floor
 ```
 
-`pnpm run check:pi-floor` runs the typecheck and the tests against pi 0.84.1 in a temporary copy. Commit messages use conventional commits. `pnpm commit` helps you write one.
+`pnpm run check:pi-floor` runs the typecheck and the tests against pi 0.99.0 in a temporary copy. Commit messages use conventional commits. `pnpm commit` helps you write one.
 
 ## Documentation
 

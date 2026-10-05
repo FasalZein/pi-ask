@@ -3,7 +3,12 @@ import {
 	type ExtensionContext,
 	getSelectListTheme,
 } from "@earendil-works/pi-coding-agent";
-import { type Component, Container, type Editor } from "@earendil-works/pi-tui";
+import {
+	type Component,
+	Container,
+	type Editor,
+	type TuiMouseEvent,
+} from "@earendil-works/pi-tui";
 import type { AskConfig } from "../config/schema.ts";
 import { getAskConfigStore } from "../config/store.ts";
 import {
@@ -77,13 +82,6 @@ type Tui = CustomCallbackArgs[0];
 type Theme = CustomCallbackArgs[1];
 type Keybindings = CustomCallbackArgs[2];
 type Done = (result: AskResult) => void;
-// pi-tui 0.84.x has no component mouse types. Newer fullscreen hosts call this method.
-interface AskMouseEvent {
-	type: string;
-	wheelDelta?: number;
-	x: number;
-	y: number;
-}
 interface AskFlowOptions {
 	allowFreeform?: boolean;
 	exec: ExtensionAPI["exec"];
@@ -260,7 +258,7 @@ function createAskFlowController(
 		handleInput(data: string) {
 			handleControllerInput(controller, data);
 		},
-		handleMouse(event: AskMouseEvent) {
+		handleMouse(event: TuiMouseEvent) {
 			return handleWheel(controller, event);
 		},
 		dispose() {
@@ -335,7 +333,7 @@ function availableAskRows(
 
 function handleWheel(
 	controller: AskFlowController,
-	event: AskMouseEvent
+	event: TuiMouseEvent
 ): { handled: true } | undefined {
 	if (controller.finished || event.type !== "wheel" || !event.wheelDelta) {
 		return;
@@ -359,7 +357,7 @@ function handleWheel(
 
 function getWheelTarget(
 	controller: AskFlowController,
-	event: AskMouseEvent
+	event: TuiMouseEvent
 ):
 	| {
 			top: number;
