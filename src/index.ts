@@ -37,15 +37,18 @@ export default async function askExtension(pi: ExtensionAPI) {
 	});
 	const remoteAsk = createRemoteAskRuntime(pi.events);
 	const shutdown = new AbortController();
+	// Unresolved ask_user calls whose pi-ai placeholder result a request in this process
+	// already sent. Recovery records this on its dismissal marker.
+	const placeholderSentIds = new Set<string>();
 	registerAskTool(pi, remoteAsk, shutdown.signal);
 	registerAskSettingsCommand(pi);
 	registerAnswerCommands(pi, remoteAsk);
-	registerPendingAskResume(pi, remoteAsk, shutdown.signal);
+	registerPendingAskResume(pi, remoteAsk, placeholderSentIds, shutdown.signal);
 	pi.on("session_shutdown", () => {
 		shutdown.abort();
 		remoteAsk.disposeAll();
 	});
-	registerRecoveryContext(pi);
+	registerRecoveryContext(pi, placeholderSentIds);
 	registerAskEntryRenderers(pi);
 	await registerReplayShortcut(pi, remoteAsk);
 }
