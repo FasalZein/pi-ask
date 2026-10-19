@@ -1,5 +1,11 @@
 # Changelog
 
+# 1.1.2 (2026-10-19)
+
+### Bug Fixes
+
+* After a restart, a submitted or cancelled recovered ask no longer changes request content that the provider already cached. Before, Pi rebuilt the system prompt, and Anthropic dropped earlier thinking blocks (114 in one session). pi-ask also keeps a `No result provided` placeholder that an earlier request already sent. Thanks to @edxeth (#16).
+
 # 1.1.1 (2026-10-05)
 
 ### Bug Fixes
