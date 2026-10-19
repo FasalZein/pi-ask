@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
-import type { ContextEvent } from "@earendil-works/pi-coding-agent";
+import {
+	type ContextEvent,
+	createExtensionRuntime,
+	discoverAndLoadExtensions,
+	ExtensionRunner,
+	SessionManager,
+} from "@earendil-works/pi-coding-agent";
 import askExtension from "../src/index.ts";
 
 const RECOVERY_TEXT =
@@ -18,7 +27,7 @@ function contextHarness(branch: unknown[]) {
 	let handler: ContextHandler | undefined;
 	askExtension({
 		on(name: string, callback: ContextHandler) {
-			if (name === "context") {
+			if (name === "context_with_system") {
 				handler = callback;
 			}
 		},
@@ -156,6 +165,58 @@ test("a real result recorded on the branch prevents a recovery splice", async ()
 		{ type: "message", message: result("answered") },
 	];
 	assert.deepEqual(await contextHarness(branch)([call]), [call]);
+});
+
+// Pi caches the request prefix and binds each signed thinking block to it, so a recovery
+// splice must keep the stored and mid-conversation system messages where they were.
+test("a recovery splice through Pi keeps every system message in place", async () => {
+	const dir = await mkdtemp(join(tmpdir(), "pi-ask-recovery-"));
+	try {
+		const loaded = await discoverAndLoadExtensions(
+			[join(import.meta.dirname, "../src/index.ts")],
+			dir,
+			dir
+		);
+		assert.deepEqual(loaded.errors, []);
+		const session = SessionManager.inMemory(dir);
+		session.appendCustomEntry("ask:pending-dismissed", { toolCallId: "ask-1" });
+		const runner = new ExtensionRunner(
+			loaded.extensions,
+			createExtensionRuntime(),
+			dir,
+			session,
+			undefined as never
+		);
+		const stored = {
+			role: "system" as const,
+			content: "Prompt sent when the session started",
+			timestamp: 1,
+		};
+		const call = assistant({ id: "ask-1", name: "ask_user" });
+		const update = {
+			role: "system" as const,
+			content: "Updated system prompt section after a restart",
+			timestamp: 3,
+		};
+		const answer = { role: "user" as const, content: "Next", timestamp: 4 };
+
+		assert.deepEqual(await runner.emitContext([stored, call, update, answer]), [
+			stored,
+			call,
+			{
+				role: "toolResult",
+				toolCallId: "ask-1",
+				toolName: "ask_user",
+				content: [{ type: "text", text: RECOVERY_TEXT }],
+				isError: false,
+				timestamp: 0,
+			},
+			update,
+			answer,
+		]);
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
 });
 
 test("one assistant batch pairs each dismissed ask once and preserves sibling results", async () => {

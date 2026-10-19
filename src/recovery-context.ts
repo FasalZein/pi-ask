@@ -8,7 +8,11 @@ const INTERRUPTED_ASK_TEXT =
 	"This ask_user call was interrupted by a restart. Its outcome, if any, follows in a later user message.";
 
 export function registerRecoveryContext(pi: ExtensionAPI): void {
-	pi.on("context", (event, ctx) => {
+	// A `context` handler that changes the conversation makes Pi replace every system
+	// message with one built from the current prompt. After the prompt changes mid-session,
+	// that rewrites the cached request prefix, and Anthropic drops all signed thinking
+	// blocks. This handler sees the system messages and leaves them in place.
+	pi.on("context_with_system", (event, ctx) => {
 		const { dismissedIds, resolvedIds } = collectRecoveryIds(
 			ctx.sessionManager.getBranch()
 		);

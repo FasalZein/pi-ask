@@ -85,6 +85,7 @@ The codebase is split so the implementation reads through file boundaries and na
 - interrupted-ask recovery selects only the newest unresolved `ask_user` call on the active branch, prefers its valid persisted payload, and validates original arguments as fallback
 - recovered forms open only for TUI `startup`, `resume`, and `fork` events; the flow stays detached from the lifecycle handler
 - recovered submit and cancel both persist dismissal before the same call can reopen; manual `/ask:replay` ignores that recovery marker
+- the dismissed-ask result splice runs on `context_with_system` and leaves system messages in place; a `context` handler that changes messages makes pi collapse them into the current prompt, which rewrites the request prefix
 - invalid persisted keymaps fall back to default keymaps for the current session without discarding valid behaviour, notification, or answer settings
 - invalid notification channels are skipped and fall back to the default bell channel if none are valid
 - ask settings behaviour and notification enabled changes attempt to persist immediately from the settings list; save failures revert the change and show an error; config reset is guarded by a short double-press confirmation
