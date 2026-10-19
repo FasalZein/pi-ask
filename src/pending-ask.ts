@@ -19,11 +19,19 @@ export interface PendingAskToolCall {
 	toolCallId: string;
 }
 
+/**
+ * `placeholderSent` records that a request in this process already carried pi-ai's
+ * placeholder result for the call, so the request-time splice must keep that placeholder.
+ */
 export function appendPendingAskDismissal(
 	pi: Pick<ExtensionAPI, "appendEntry">,
-	toolCallId: string
+	toolCallId: string,
+	placeholderSent: boolean
 ): void {
-	pi.appendEntry(ASK_PENDING_DISMISSED_ENTRY_TYPE, { toolCallId });
+	pi.appendEntry(
+		ASK_PENDING_DISMISSED_ENTRY_TYPE,
+		placeholderSent ? { toolCallId, placeholderSent } : { toolCallId }
+	);
 }
 
 export function findPendingAskToolCall(
@@ -128,4 +136,12 @@ export function getDismissedToolCallId(
 
 	const toolCallId = (entry.data as { toolCallId?: unknown }).toolCallId;
 	return typeof toolCallId === "string" ? toolCallId : undefined;
+}
+
+export function isPlaceholderSentDismissal(entry: SessionEntry): boolean {
+	return (
+		getDismissedToolCallId(entry) !== undefined &&
+		(entry as { data: { placeholderSent?: unknown } }).data.placeholderSent ===
+			true
+	);
 }

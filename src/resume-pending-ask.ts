@@ -24,6 +24,7 @@ const DISMISS_NOTICE =
 export function registerPendingAskResume(
 	pi: ExtensionAPI,
 	remoteAsk: RemoteAskRuntime,
+	placeholderSentIds: ReadonlySet<string>,
 	shutdownSignal?: AbortSignal
 ): void {
 	let reopening = false;
@@ -40,7 +41,14 @@ export function registerPendingAskResume(
 
 		reopening = true;
 		queueMicrotask(() => {
-			reopenPendingAsk(pi, ctx, pendingAsk, remoteAsk, shutdownSignal)
+			reopenPendingAsk(
+				pi,
+				ctx,
+				pendingAsk,
+				remoteAsk,
+				placeholderSentIds,
+				shutdownSignal
+			)
 				.catch((error) => {
 					ctx.ui.notify(
 						`Could not reopen unanswered ask_user form: ${formatError(error)}`,
@@ -76,6 +84,7 @@ async function reopenPendingAsk(
 	ctx: ExtensionContext,
 	pendingAsk: PendingAskToolCall,
 	remoteAsk: RemoteAskRuntime,
+	placeholderSentIds: ReadonlySet<string>,
 	shutdownSignal?: AbortSignal
 ): Promise<void> {
 	const payloadId = findAskPayloadEntryId(ctx, pendingAsk.toolCallId);
@@ -113,7 +122,11 @@ async function reopenPendingAsk(
 			)
 		);
 	}
-	appendPendingAskDismissal(pi, pendingAsk.toolCallId);
+	appendPendingAskDismissal(
+		pi,
+		pendingAsk.toolCallId,
+		placeholderSentIds.has(pendingAsk.toolCallId)
+	);
 	if (result.cancelled) {
 		ctx.ui.notify(DISMISS_NOTICE, "info");
 		return;

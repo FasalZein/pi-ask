@@ -284,7 +284,8 @@ test("pending ask recovery scans startup, resume, fork, and tree only in TUI", (
 				}
 			},
 		} as never,
-		remoteAsk
+		remoteAsk,
+		new Set()
 	);
 	assert(sessionStartHandler);
 	assert(sessionTreeHandler);
@@ -752,6 +753,122 @@ test("session shutdown closes recovery without dismissal; startup still finds th
 	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
 });
 
+// A request sent while the recovered form is open already carries pi-ai's placeholder for
+// the call. Pi stores that request's reply only when it ends, so the dismissal can land
+// before the reply. Later requests must keep the placeholder that was already sent.
+test("a dismissal after a request sent while the recovered form was open keeps the placeholder", {
+	timeout: 2000,
+}, async () => {
+	getAskConfigStore().setConfig(disabledNotificationConfig());
+	const branch: unknown[] = [
+		askToolCall("call-race"),
+		storedPayload("call-race"),
+	];
+	const handlers = new Map<string, (event: any, ctx: any) => unknown>();
+	let closeFlow: (() => void) | undefined;
+	const ctx = {
+		cwd: process.cwd(),
+		mode: "tui",
+		isIdle: () => false,
+		sessionManager: { getBranch: () => branch },
+		ui: {
+			notify() {
+				// Notifications do not affect the request.
+			},
+			setWorkingVisible() {
+				// Visibility does not affect the request.
+			},
+			custom(
+				callback: (...args: any[]) => { handleInput(data: string): void }
+			) {
+				return new Promise((resolve) => {
+					const component = callback(
+						{
+							requestRender() {
+								// Rendering does not affect the request.
+							},
+						},
+						plainTheme(),
+						{},
+						resolve
+					);
+					closeFlow = () => component.handleInput("\x1b");
+				});
+			},
+		},
+	};
+	askExtension({
+		events: new TestEventBus(),
+		on(name: string, handler: (event: any, ctx: any) => unknown) {
+			handlers.set(name, handler);
+		},
+		registerTool() {
+			// Registration is not under test.
+		},
+		registerShortcut() {
+			// Main-editor shortcuts are outside this test seam.
+		},
+		registerCommand() {
+			// Registration is not under test.
+		},
+		registerEntryRenderer() {
+			// Registration is not under test.
+		},
+		getCommands() {
+			return [];
+		},
+		appendEntry(customType: string, data: unknown) {
+			branch.push({ type: "custom", customType, data });
+		},
+		setLabel() {
+			// Labels are not under test.
+		},
+		sendUserMessage() {
+			// The cancelled form sends no answer.
+		},
+	} as never);
+	getAskConfigStore().setConfig(disabledNotificationConfig());
+	const request = async () => {
+		const messages = branch.flatMap((entry) => {
+			const candidate = entry as { type: string; message?: unknown };
+			return candidate.type === "message" ? [candidate.message] : [];
+		});
+		const result = (await handlers.get("context_with_system")?.(
+			{ type: "context_with_system", messages },
+			ctx
+		)) as { messages?: unknown[] } | undefined;
+		return result?.messages ?? messages;
+	};
+
+	handlers.get("session_start")?.({ reason: "startup" }, ctx);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.ok(closeFlow, "the recovered form is open");
+	branch.push({
+		type: "message",
+		message: { role: "user", content: "Meanwhile, continue" },
+	});
+	const sent = await request();
+	closeFlow?.();
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(branch.at(-1), {
+		type: "custom",
+		customType: ASK_PENDING_DISMISSED_ENTRY_TYPE,
+		data: { toolCallId: "call-race", placeholderSent: true },
+	});
+	branch.push(assistantMessage([{ type: "text", text: "Reply" }], "stop"), {
+		type: "message",
+		message: { role: "user", content: "Next" },
+	});
+
+	const next = await request();
+	assert.deepEqual(next.slice(0, sent.length), sent);
+	assert.equal(
+		next.some((message) => (message as { role: string }).role === "toolResult"),
+		false
+	);
+	getAskConfigStore().setConfig(DEFAULT_ASK_CONFIG);
+});
+
 function createResumeHarness(
 	branch: unknown[],
 	remoteAsk: ReturnType<typeof createRemoteAskRuntime>,
@@ -798,7 +915,8 @@ function createResumeHarness(
 				options.onSend?.(text, sendOptions);
 			},
 		} as never,
-		remoteAsk
+		remoteAsk,
+		new Set()
 	);
 	assert(sessionStartHandler);
 	assert(sessionTreeHandler);

@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
-import type { ContextEvent } from "@earendil-works/pi-coding-agent";
+import {
+	type ContextEvent,
+	createExtensionRuntime,
+	discoverAndLoadExtensions,
+	ExtensionRunner,
+	SessionManager,
+} from "@earendil-works/pi-coding-agent";
 import askExtension from "../src/index.ts";
 
 const RECOVERY_TEXT =
@@ -18,7 +27,7 @@ function contextHarness(branch: unknown[]) {
 	let handler: ContextHandler | undefined;
 	askExtension({
 		on(name: string, callback: ContextHandler) {
-			if (name === "context") {
+			if (name === "context_with_system") {
 				handler = callback;
 			}
 		},
@@ -156,6 +165,151 @@ test("a real result recorded on the branch prevents a recovery splice", async ()
 		{ type: "message", message: result("answered") },
 	];
 	assert.deepEqual(await contextHarness(branch)([call]), [call]);
+});
+
+function entry(message: ContextEvent["messages"][number]) {
+	return { type: "message", message };
+}
+
+function reply(timestamp: number) {
+	return {
+		role: "assistant",
+		stopReason: "stop",
+		content: [{ type: "text", text: "Reply" }],
+		timestamp,
+	} as ContextEvent["messages"][number];
+}
+
+// Once a later assistant reply exists, an earlier request already sent pi-ai's placeholder
+// result for the call. Replacing it would change that request's prefix.
+test("a dismissal recorded after a later reply leaves the sent placeholder unchanged", async () => {
+	const call = assistant({ id: "ask-late", name: "ask_user" });
+	const continued = { role: "user" as const, content: "Go on", timestamp: 101 };
+	const later = reply(102);
+	const answer = { role: "user" as const, content: "Red", timestamp: 103 };
+	const messages = [call, continued, later, answer];
+	const branch = [
+		entry(call),
+		entry(continued),
+		entry(later),
+		marker("ask-late"),
+		entry(answer),
+	];
+	assert.deepEqual(await contextHarness(branch)(messages), messages);
+});
+
+// getBranch() returns stored entries as written; older or imported sessions can hold
+// assistant messages without content, which Pi itself tolerates.
+for (const [label, content] of [
+	["null", null],
+	["missing", undefined],
+] as const) {
+	test(`an earlier assistant entry with ${label} content does not stop a recovery splice`, async () => {
+		const legacy = {
+			type: "message",
+			message: {
+				role: "assistant",
+				stopReason: "error",
+				...(content === null ? { content } : {}),
+			},
+		};
+		const call = assistant({ id: "ask-1", name: "ask_user" });
+		const answer = { role: "user" as const, content: "Red", timestamp: 102 };
+		const paired = await contextHarness([
+			legacy,
+			entry(call),
+			marker("ask-1"),
+			entry(answer),
+		])([call, answer]);
+		assert.deepEqual(
+			paired.map((message) =>
+				message.role === "toolResult" ? message.toolCallId : message.role
+			),
+			["assistant", "ask-1", "user"]
+		);
+	});
+}
+
+test("recovering the older of two batched asks after a reply keeps the earlier results", async () => {
+	const batch = assistant(
+		{ id: "first", name: "ask_user" },
+		{ id: "second", name: "ask_user" }
+	);
+	const secondAnswer = { role: "user" as const, content: "B", timestamp: 101 };
+	const later = reply(102);
+	const firstAnswer = { role: "user" as const, content: "A", timestamp: 103 };
+	const branch = [
+		entry(batch),
+		marker("second"),
+		entry(secondAnswer),
+		entry(later),
+		marker("first"),
+		entry(firstAnswer),
+	];
+	const paired = await contextHarness(branch)([
+		batch,
+		secondAnswer,
+		later,
+		firstAnswer,
+	]);
+	assert.deepEqual(
+		paired.map((message) =>
+			message.role === "toolResult" ? message.toolCallId : message.role
+		),
+		["assistant", "second", "user", "assistant", "user"]
+	);
+});
+
+// Pi caches the request prefix and binds each signed thinking block to it, so a recovery
+// splice must keep the stored and mid-conversation system messages where they were.
+test("a recovery splice through Pi keeps every system message in place", async () => {
+	const dir = await mkdtemp(join(tmpdir(), "pi-ask-recovery-"));
+	try {
+		const loaded = await discoverAndLoadExtensions(
+			[join(import.meta.dirname, "../src/index.ts")],
+			dir,
+			dir
+		);
+		assert.deepEqual(loaded.errors, []);
+		const session = SessionManager.inMemory(dir);
+		session.appendCustomEntry("ask:pending-dismissed", { toolCallId: "ask-1" });
+		const runner = new ExtensionRunner(
+			loaded.extensions,
+			createExtensionRuntime(),
+			dir,
+			session,
+			undefined as never
+		);
+		const stored = {
+			role: "system" as const,
+			content: "Prompt sent when the session started",
+			timestamp: 1,
+		};
+		const call = assistant({ id: "ask-1", name: "ask_user" });
+		const update = {
+			role: "system" as const,
+			content: "Updated system prompt section after a restart",
+			timestamp: 3,
+		};
+		const answer = { role: "user" as const, content: "Next", timestamp: 4 };
+
+		assert.deepEqual(await runner.emitContext([stored, call, update, answer]), [
+			stored,
+			call,
+			{
+				role: "toolResult",
+				toolCallId: "ask-1",
+				toolName: "ask_user",
+				content: [{ type: "text", text: RECOVERY_TEXT }],
+				isError: false,
+				timestamp: 0,
+			},
+			update,
+			answer,
+		]);
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
 });
 
 test("one assistant batch pairs each dismissed ask once and preserves sibling results", async () => {
