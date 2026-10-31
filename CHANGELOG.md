@@ -1,5 +1,15 @@
 # Changelog
 
+# 1.2.0 (2026-11-03)
+
+Each model request includes about 250 more tokens of `ask_user` tool text.
+
+### Features
+
+* `ask_user` takes a required `context` argument. The chat shows it as a message above the `ask_user` row, and the form holds only the questions and options. Before, Opus and Sonnet often put the explanation in a thinking block or inside the form, so the user saw no explanation, or lost it after Submit. On 1.1.2 this happened in 3 of 3 test runs with Opus 5.5, and in 0 of 3 with this change (ADR 0011). Thanks to @edxeth (#18).
+* The `pi-ask:started` event has an optional `context` field, so remote clients can show the explanation.
+* A question that omits `type` and gives every option preview text becomes a preview question, so the form shows the previews.
+
 # 1.1.2 (2026-10-19)
 
 ### Bug Fixes
