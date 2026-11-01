@@ -82,7 +82,7 @@ function setup(params: AskParams, signal = new AbortController()) {
 	};
 	const pending = tool.execute(
 		"rpc-call",
-		params,
+		{ context: "The RPC client shows this before the dialogs.", ...params },
 		signal.signal,
 		(update: (typeof updates)[number]) => updates.push(update),
 		{
@@ -146,6 +146,10 @@ test("RPC single selection and submit emit TUI-shaped lifecycle events", async (
 	assert.equal(started.flowId, "tool:rpc-call");
 	assert.equal(started.source, "tool");
 	assert.equal(started.questions[0].id, "goal");
+	assert.equal(
+		started.context,
+		"The RPC client shows this before the dialogs."
+	);
 	assert.equal(completed.flowId, started.flowId);
 	assert.deepEqual(completed.result, result.details);
 	flow.remote.disposeAll();

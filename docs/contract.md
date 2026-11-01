@@ -6,12 +6,13 @@ This document defines the stable external behavior. It does not explain internal
 
 ## Model-facing tool text
 
-The extension uses one concise tool description and two guidelines. The question schema has no question limit and omits option `value`. It derives unique machine values from labels while accepting valid explicit values from older calls. The description limits asks to decisions needed now. For a specific requested decision, ask that question only, without other requirements or confirmation questions. This does not limit explicitly requested multi-question rounds. General follow-up rules live in guideline 2. Elaborate results add an answer-first instruction to model-facing content without changing transcript rendering. Configuration guidance is conditional; the system prompt is never replaced.
+The extension uses one concise tool description and three guidelines. The schema requires a `context` string, which comes first; it has no question limit and omits option `value`. It derives unique machine values from labels while accepting valid explicit values from older calls. The description limits asks to decisions needed now. For a specific requested decision, ask that question only, without other requirements or confirmation questions. This does not limit explicitly requested multi-question rounds. The description also states what the user sees: `context` in the chat, then the form, which shows only prompts, option labels and descriptions and disappears after Submit. The `context` description lists what explains a decision: findings, why each decision matters, why an option is recommended, hints, and answers to the user's questions. Guideline 2 splits every ask: each question and its options go only in the form, with the recommended option marked, and everything that explains goes only in `context`, not in message text. Neither `context` nor message text restates a question or lists its options, even when a skill or prompt gives a text format for questions, and the guideline states that the user does not see thinking, tool output, or files. The `recommended` field asks for the reason in `context`, and an option `description` says what the option means. General follow-up rules live in guideline 3. Elaborate results add an answer-first instruction to model-facing content without changing transcript rendering. Configuration guidance is conditional; the system prompt is never replaced.
 
 ## Input
 
 ```ts
 {
+  context: string;
   title?: string;
   questions: Array<{
     id: string;
@@ -33,6 +34,7 @@ The public tool schema has no option `value` property. Supply a label; the tool 
 
 ## Input rules
 
+- `context` is required in the public schema and must be non-blank after trimming; a missing or blank `context` that reaches tool execution returns an `invalid_input` issue at path `context` together with any question issues, and no form opens
 - at least one question is required
 - every question must have non-empty trimmed `id` and `prompt`
 - every question must have at least one option
@@ -43,7 +45,7 @@ The public tool schema has no option `value` property. Supply a label; the tool 
 - option `label` is required in the public schema; before schema validation, a missing or blank string label is derived from a non-empty `value` by replacing hyphens and underscores with spaces and capitalizing the first character
 - `recommended` is optional presentation metadata; zero, one, or multiple options may set it to `true`
 - recommended options render warning-colored `(recommended)` followed by muted ` | <description>` on the row under the label, or only `(recommended)` when no description exists; recommendations never preselect an answer
-- `type` defaults to `single`
+- `type` defaults to `single`; before schema validation, a tool-call question that omits `type` and gives every option non-blank preview text becomes `preview`, because only preview questions show option previews
 - `required` defaults to `false`
 - `required` is metadata only; it never blocks submission
 - preview questions require preview text for every declared option; option descriptions do not satisfy this requirement, and invalid preview payloads report a fix hint to add preview text or switch to `type: "single"`
@@ -206,7 +208,8 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 - option-targeted elaboration items include the specific noted option plus whether it is currently selected
 - question-targeted elaboration items include whether the question already has a committed answer
 - `elaboration.instruction` tells the agent to answer the clarification directly first, then re-ask only the affected questions if a choice is still needed; elaborate result `content` also carries the short answer-first instruction so the model receives it
-- when a choice is still needed after an answer or note, agents should use another structured `ask_user` call, not plain-text choices
+- when a submitted answer or note asks a question or asks for an explanation, agents answer it in `context` when they ask again, or in message text when they do not; when the user asks only for an explanation or asks for no form, agents do not call `ask_user`
+- when a choice is still needed after that, agents should use another structured `ask_user` call, not plain-text choices
 - when prior answers narrow the branch, agents should bundle the next 2-3 related unresolved decisions into one follow-up when possible; ask one at a time only when the next question materially depends on the previous answer
 - `elaboration` is only present when `mode === "elaborate"`
 - elaborate `content` text and transcript rendering describe each note directly using the full question prompt and option label, and include the current committed answer text when available, instead of a generic elaboration banner
@@ -233,7 +236,7 @@ While the TUI or RPC ask flow is open, `ask_user` sends a tool update after each
 - review tab shows a one-row action bar (`1 Submit │ 2 Elaborate │ 3 Cancel`, the focused action highlighted) above numbered question blocks; up/down move between actions, and the footer shows `↑↓ action`; each block shows its question label, question note, `→ answer` lines in the success color with option notes under their answers, or `unanswered` in the warning color; terminals too narrow for the bar show one action per row; on short terminals the answers scroll under the fixed bar and show how many questions are above and below, with the same narrow-terminal `↑ N more` / `↓ N more` hint fallback
 - on the review tab, `Submit` and `Cancel` preview notes only for answered questions
 - on the review tab, `Elaborate` preview expands to all question notes and all option notes, including notes on unselected options
-- transcript-friendly call and result rendering
+- transcript-friendly call and result rendering; the call's `context` appears in the chat as a message above the `ask_user` row (see Execution and lifecycle)
 - `/answer` command to convert the latest completed assistant message into an `AskParams` form through a synthetic `ask_user` tool call and open the ask UI
 - `/answer` extraction may use an internal `freeform: true` option for open-ended questions with no explicit choices; these render as user-input-only questions with the label `Type your answer:`, no numbered option row, and no selection caret; this marker is not part of the public `ask_user` tool contract
 - `/answer:again` command to replay the latest `/answer`-extracted form on the current branch
@@ -298,6 +301,8 @@ While an interactive ask flow is open, pi-ask sets the `pi-ask` footer status to
 
 `ask_user` registers with `exposure: "model-only"`: pi declares it to the model, and codemode scripts and other tools cannot call it through `ctx.executeTool()`. It stays declared when `codemode.mode` is `"only"`.
 
+`ask_user` draws its own transcript rows (`renderShell: "self"`). The call row shows `context` as Markdown with the padding of an assistant message, then the `ask_user N question(s) (labels)` header row. While the call streams or its form is open, the header row and any answers reported so far have no background. A finished call draws the box of pi's default tool shell around the header and result rows, with the success or error background. pi's HTML exporter renders every call as pending and puts each call inside its own status box, so an export shows `context` and the header row inside that box. While the call streams, `context` appears as it arrives. In TUI mode the form opens below the transcript after the call ends, so `context` stays visible above it, and the answer returns as the tool result in the same turn. A call without `context` shows only the header row.
+
 `ask_user` requests sequential execution. When one assistant message calls it alongside other tools, pi runs the entire batch one call at a time. A pre-aborted call does not open the UI; aborting an open flow closes it and emits the remote `completed` event. On session shutdown, open flows close. An interrupted recovered ask has no dismissal marker or tool result, so startup can reopen it again.
 
 ## Configuration advice
@@ -329,7 +334,7 @@ Channels:
 - `pi-ask:submit`
 - `pi-ask:submit-result`
 
-Remote submissions must be explicit `{ kind: "answer" }` or `{ kind: "cancel" }` responses. Remote answers use question ids and normalized option values from the started event. pi-ask validates ids and values, recomputes labels/indices, and does not infer approval semantics from labels.
+Remote submissions must be explicit `{ kind: "answer" }` or `{ kind: "cancel" }` responses. The started event carries the ask's non-blank `context` when it has one, so a remote UI can show the explanation before the questions. Remote answers use question ids and normalized option values from the started event. pi-ask validates ids and values, recomputes labels/indices, and does not infer approval semantics from labels.
 
 See [`remote-events.md`](remote-events.md) for payload shapes, examples, and a local smoke test.
 

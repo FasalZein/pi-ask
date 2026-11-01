@@ -11,7 +11,7 @@ import {
 	renderAskToolCall,
 	renderAskToolResult,
 	successfulResponse,
-	validateParams,
+	validateToolParams,
 } from "./ask-tool-helpers.ts";
 import { getAskConfigStore } from "./config/store.ts";
 import {
@@ -22,7 +22,7 @@ import {
 } from "./prompt-text.ts";
 import type { RemoteAskRuntime } from "./remote-ask.ts";
 import { runRpcAskFlow } from "./rpc-ask.ts";
-import { prepareAskParams } from "./state/normalize.ts";
+import { prepareAskToolArguments } from "./state/normalize.ts";
 import { summarizeResult, toAskResult } from "./state/result.ts";
 import type { AskParams, AskState } from "./types.ts";
 import { runAskFlow } from "./ui/controller.ts";
@@ -42,7 +42,7 @@ export function registerAskTool(
 		promptSnippet: ASK_TOOL_PROMPT_SNIPPET,
 		promptGuidelines: [...ASK_TOOL_PROMPT_GUIDELINES],
 		parameters: AskToolParamsSchema,
-		prepareArguments: (args) => prepareAskParams(args) as AskParams,
+		prepareArguments: (args) => prepareAskToolArguments(args) as AskParams,
 		execute: (toolCallId, params, signal, onUpdate, ctx) =>
 			executeAskTool(
 				pi,
@@ -54,6 +54,8 @@ export function registerAskTool(
 				remoteAsk,
 				shutdownSignal
 			),
+		// The call row shows `context` as a message above the tool row, outside pi's tool box.
+		renderShell: "self",
 		renderCall: renderAskToolCall,
 		renderResult: renderAskToolResult,
 	});
@@ -76,7 +78,7 @@ async function executeAskTool(
 		return abortedResponse(params);
 	}
 	const config = await getAskConfigStore().getConfig();
-	const validation = validateParams(params, {
+	const validation = validateToolParams(params, {
 		presentSingleAsMulti: config.behaviour.presentSingleAsMulti,
 	});
 	if (!validation.ok) {

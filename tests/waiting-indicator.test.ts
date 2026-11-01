@@ -9,6 +9,7 @@ const FAILED_RE = /failed/;
 const RECOVERY_FAILED_RE = /recovery screen failed/;
 
 const params: AskParams = {
+	context: "Both answers change the plan.",
 	questions: [
 		{ id: "a", prompt: "First?", options: [{ value: "yes", label: "Yes" }] },
 		{ id: "b", prompt: "Second?", options: [{ value: "no", label: "No" }] },
