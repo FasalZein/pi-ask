@@ -38,6 +38,23 @@ export function collectValidationIssues(
 	return collector.issues;
 }
 
+/**
+ * prepareAskParams for an `ask_user` call. pi converts a number or boolean to the schema's
+ * string type before validation, but the call renderer reads the raw argument, so a converted
+ * `context` would open a form with no explanation. Dropping it makes validation report it missing.
+ */
+export function prepareAskToolArguments(input: unknown): unknown {
+	if (
+		!isRecord(input) ||
+		input.context === undefined ||
+		typeof input.context === "string"
+	) {
+		return prepareAskParams(input);
+	}
+	const { context: _nonStringContext, ...rest } = input;
+	return prepareAskParams(rest);
+}
+
 export function prepareAskParams(input: unknown): unknown {
 	if (!(isRecord(input) && Array.isArray(input.questions))) {
 		return input;
@@ -58,10 +75,27 @@ export function prepareAskParams(input: unknown): unknown {
 			);
 			return {
 				...question,
+				// Only a preview question shows option previews. A call that gives every option
+				// preview text but omits the type means a preview question.
+				...(question.type === undefined && everyOptionHasPreview(options)
+					? { type: "preview" }
+					: {}),
 				options: options.map((option) => fillOptionValue(option, used)),
 			};
 		}),
 	};
+}
+
+function everyOptionHasPreview(options: readonly unknown[]): boolean {
+	return (
+		options.length > 0 &&
+		options.every(
+			(option) =>
+				isRecord(option) &&
+				typeof option.preview === "string" &&
+				option.preview.trim() !== ""
+		)
+	);
 }
 
 function fillOptionValue(input: unknown, used: Set<string>): unknown {

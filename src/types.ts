@@ -19,6 +19,8 @@ export interface AskQuestionInput {
 }
 
 export interface AskParams {
+	/** The explanation the chat shows above the form; required by the tool schema. */
+	context?: string;
 	questions: AskQuestionInput[];
 	title?: string;
 }

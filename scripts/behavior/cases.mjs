@@ -41,4 +41,31 @@ export const cases = [
 		prompt:
 			"Change the ask_user keymap for submit. Before changing any pi-ask settings or keys, read the pi-ask configuration documentation. Do not edit files in this exercise; report the documented setting you would change.",
 	},
+	{
+		// The user has not read the file, so the fact must reach them before the form: as message text or in the call's context.
+		id: "context",
+		prompt:
+			"Read docs/adr/0003-base-model-gates-model-facing-text.md. Then ask me whether the base model named there should change. Do not decide for me.",
+		factPattern: "deepseek",
+	},
+	{
+		// A skill-style round format that writes the questions as text, as the grilling skill does.
+		id: "grilling-round",
+		prompt:
+			'Grill me about the sync design of a local note-taking app. Work in rounds: ask every decision you can ask now in one round, number each question and give your recommended answer, then wait for my answers. Format a round like so:\n\n❓ **Q1** - **<question title>**: <question body, including multiple choices>\n\n➡️ <your recommended answer>\n\n---\n\n❓ **Q2** - **<question title>**: <question body, including multiple choices>\n\n➡️ <your recommended answer>\n\nWord each question so "yes" accepts your recommended answer. Stop after my answers to the first round.',
+	},
+	{
+		id: "typed-question",
+		prompt:
+			"Help me choose how a local note-taking app stores its notes. Ask me to choose between two storage designs before you plan.",
+		firstAnswer:
+			"I don't understand these options. What is the difference between them?",
+	},
+	{
+		id: "explain-only",
+		prompt:
+			"Plan the sync feature of a local note-taking app. Ask me which conflict strategy to use before you plan.",
+		firstAnswer:
+			"Explain these options to me first. Do not use the form again; I will reply in chat.",
+	},
 ];
