@@ -1,6 +1,6 @@
 # Changelog
 
-# 1.2.0 (2026-11-03)
+# 1.2.0 (2026-10-31)
 
 Each model request includes about 250 more tokens of `ask_user` tool text.
 
